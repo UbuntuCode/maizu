@@ -1,22 +1,22 @@
 const express = require("express")
+const cors = require("cors")
+require("dotenv").config()
 
 const app = express()
 
+// ✅ IMPORTANT
+app.use(cors())
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
-app.get("/", (req, res) => {
-res.send("MAIZU backend is running 🚀")
-})
+// ROUTES
+const authRoutes = require("./routes/authRoutes")
+const productRoutes = require("./routes/productRoutes")
 
-const PORT = 5000
+app.use("/api/auth", authRoutes)
+app.use("/api/products", productRoutes)
 
-app.listen(PORT, () => {
-console.log("Server running on port 5000")
+// START SERVER
+app.listen(5000, () => {
+  console.log("🚀 Server running on port 5000")
 })
-app.get("/api/test", (req, res) => {
-res.json({ message: "Backend is connected successfully 🚀" })
-<<<<<<< HEAD
-})
-=======
-})
->>>>>>> a8c42a496c6e4c9a5c5c6c04d0c5060f5c0700a5

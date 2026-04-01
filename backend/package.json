@@ -4,23 +4,23 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-<<<<<<< HEAD
-  "start": "node server.js",
-  "dev": "nodemon server.js"
-}
-  ,"keywords": [],
-=======
-"start": "node server.js",
-"dev": "nodemon server.js"
-}
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
->>>>>>> a8c42a496c6e4c9a5c5c6c04d0c5060f5c0700a5
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "express": "^5.2.1"
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
