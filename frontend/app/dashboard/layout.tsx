@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { logout } from "@/utils/auth"
 
@@ -13,13 +12,12 @@ export default function DashboardLayout({
 
   const handleLogout = () => {
     logout()
-    router.push("/login")
+    window.location.href = "/login"
   }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
-      
-      {/* SIDEBAR */}
+      {/* Sidebar */}
       <aside
         style={{
           width: "250px",
@@ -32,33 +30,24 @@ export default function DashboardLayout({
         }}
       >
         <div>
-          <h2 style={{ marginBottom: "30px" }}>MAIZU 🚀</h2>
+          <h2>MAIZU 🚀</h2>
 
-          <nav style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            
-            <Link href="/dashboard" style={{ color: "white" }}>
-              Dashboard
-            </Link>
+          <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/dashboard"}>
+            Dashboard
+          </p>
 
-            <Link href="/dashboard/create-product" style={{ color: "white" }}>
-              Create Product
-            </Link>
-
-            <Link href="/dashboard/products" style={{ color: "white" }}>
-              Products
-            </Link>
-
-          </nav>
+          <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/dashboard/create-product"}>
+            Create Product
+          </p>
         </div>
 
-        {/* LOGOUT */}
         <button
           onClick={handleLogout}
           style={{
-            padding: "10px",
             background: "#ef4444",
-            border: "none",
             color: "white",
+            padding: "10px",
+            border: "none",
             cursor: "pointer"
           }}
         >
@@ -66,7 +55,7 @@ export default function DashboardLayout({
         </button>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* Main */}
       <main
         style={{
           flex: 1,

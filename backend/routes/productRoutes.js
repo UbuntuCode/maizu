@@ -1,14 +1,28 @@
-const express = require("express")
-const router = express.Router()
+const express = require("express");
+const multer  = require("multer");
 
-const { createProduct, getProducts } = require("../controllers/productController")
-const upload = require("../middleware/upload")
-const authMiddleware = require("../middleware/authMiddleware")
+const router = express.Router();
 
-// ✅ CREATE PRODUCT
-router.post("/", authMiddleware, upload.single("image"), createProduct)
+const { protect, requireRole } = require("../middleware/supabaseAuth");
+const {
+  getAllProducts,
+  getProduct,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  likeProduct,
+} = require("../controllers/productController");
 
-// ✅ GET PRODUCTS
-router.get("/", getProducts)
+const upload = multer({ storage: multer.memoryStorage() }).array("images", 5);
 
-module.exports = router
+// Public
+router.get("/",          getAllProducts);
+router.get("/:id",       getProduct);
+
+// Protected
+router.post("/",         protect, requireRole("vendor", "admin"), upload, createProduct);
+router.put("/:id",       protect, updateProduct);
+router.delete("/:id",    protect, deleteProduct);
+router.post("/:id/like", protect, likeProduct);
+
+module.exports = router;

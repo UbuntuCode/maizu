@@ -1,96 +1,131 @@
-const pool = require("../config/db")
-const cloudinary = require("../config/cloudinary")
+const { query }              = require("../config/db");
+const { uploadToCloudinary } = require("../config/cloudinary");
 
-// ================= CREATE PRODUCT =================
-exports.createProduct = async (req, res) => {
-  try {
-    console.log("🔥 CREATE PRODUCT HIT")
+/* ── GET ALL PRODUCTS ── GET /api/products ──────────────────── */
+const getAllProducts = async (req, res) => {
+  const { store_id, category, search, limit = 20, offset = 0 } = req.query;
 
-    const { title, description, price } = req.body
-    const userId = req.user?.id
+  let sql    = `SELECT p.*, s.name AS store_name FROM products p JOIN stores s ON p.store_id = s.id WHERE p.is_active = true`;
+  const params = [];
 
-    console.log("BODY:", req.body)
-    console.log("FILE:", req.file)
+  if (store_id) { params.push(store_id); sql += ` AND p.store_id = $${params.length}`; }
+  if (category) { params.push(category); sql += ` AND p.category = $${params.length}`; }
+  if (search)   { params.push(`%${search}%`); sql += ` AND p.name ILIKE $${params.length}`; }
 
-    // ✅ VALIDATION
-    if (!title || !price) {
-      return res.status(400).json({
-        message: "Title and price are required ❌"
-      })
-    }
+  params.push(Number(limit));  sql += ` LIMIT $${params.length}`;
+  params.push(Number(offset)); sql += ` OFFSET $${params.length}`;
 
-    if (!req.file) {
-      return res.status(400).json({
-        message: "Image is required ❌"
-      })
-    }
+  const result = await query(sql, params);
+  res.status(200).json({ success: true, products: result.rows, count: result.rows.length });
+};
 
-    // ✅ CHECK BUFFER EXISTS (VERY IMPORTANT)
-    if (!req.file.buffer) {
-      return res.status(400).json({
-        message: "File buffer missing ❌ (Multer issue)"
-      })
-    }
+/* ── GET SINGLE PRODUCT ── GET /api/products/:id ────────────── */
+const getProduct = async (req, res) => {
+  const result = await query(
+    `SELECT p.*, s.name AS store_name FROM products p JOIN stores s ON p.store_id = s.id WHERE p.id = $1`,
+    [req.params.id]
+  );
 
-    // ================= CLOUDINARY UPLOAD =================
-    const uploadResult = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: "maizu_products" },
-        (error, result) => {
-          if (error) {
-            console.error("❌ CLOUDINARY ERROR:", error)
-            reject(error)
-          } else {
-            resolve(result)
-          }
-        }
-      )
-
-      stream.end(req.file.buffer)
-    })
-
-    const imageUrl = uploadResult.secure_url
-
-    console.log("✅ Uploaded to Cloudinary:", imageUrl)
-
-    // ================= SAVE TO DATABASE =================
-    const result = await pool.query(
-      `INSERT INTO products (title, description, price, image, user_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [title, description || "", price, imageUrl, userId]
-    )
-
-    res.json({
-      message: "Product created successfully ✅",
-      product: result.rows[0]
-    })
-
-  } catch (error) {
-    console.error("❌ CREATE PRODUCT ERROR:", error)
-
-    res.status(500).json({
-      message: error.message || "Server error ❌"
-    })
+  if (result.rows.length === 0) {
+    return res.status(404).json({ success: false, message: "Product not found." });
   }
-}
 
-// ================= GET PRODUCTS =================
-exports.getProducts = async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT * FROM products ORDER BY id DESC"
-    )
+  await query("UPDATE products SET view_count = view_count + 1 WHERE id = $1", [req.params.id]);
+  res.status(200).json({ success: true, product: result.rows[0] });
+};
 
-    res.json({
-      products: result.rows
-    })
+/* ── CREATE PRODUCT ── POST /api/products ───────────────────── */
+const createProduct = async (req, res) => {
+  const { store_id, name, description, price, category, stock_quantity = 0 } = req.body;
 
-  } catch (error) {
-    console.error("❌ GET PRODUCTS ERROR:", error)
-
-    res.status(500).json({
-      message: "Error fetching products ❌"
-    })
+  if (!store_id || !name || !price) {
+    return res.status(400).json({ success: false, message: "store_id, name and price required." });
   }
-}
+
+  const storeCheck = await query("SELECT owner_id FROM stores WHERE id = $1", [store_id]);
+  if (storeCheck.rows.length === 0) return res.status(404).json({ success: false, message: "Store not found." });
+  if (storeCheck.rows[0].owner_id !== req.user.id) return res.status(403).json({ success: false, message: "Not authorised." });
+
+  const imageUrls = [];
+  if (req.files && req.files.length > 0) {
+    for (const file of req.files) {
+      const up = await uploadToCloudinary(file.buffer, "maizu/products");
+      imageUrls.push(up.url);
+    }
+  }
+
+  const result = await query(
+    `INSERT INTO products (store_id, name, description, price, category, stock_quantity, image_urls)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [store_id, name.trim(), description, Number(price), category, Number(stock_quantity), JSON.stringify(imageUrls)]
+  );
+
+  await query("UPDATE stores SET product_count = product_count + 1 WHERE id = $1", [store_id]);
+  res.status(201).json({ success: true, product: result.rows[0] });
+};
+
+/* ── UPDATE PRODUCT ── PUT /api/products/:id ────────────────── */
+const updateProduct = async (req, res) => {
+  const { id } = req.params;
+  const { name, description, price, category, stock_quantity, is_active } = req.body;
+
+  const check = await query(
+    `SELECT p.id, s.owner_id FROM products p JOIN stores s ON p.store_id = s.id WHERE p.id = $1`,
+    [id]
+  );
+  if (check.rows.length === 0) return res.status(404).json({ success: false, message: "Product not found." });
+  if (check.rows[0].owner_id !== req.user.id) return res.status(403).json({ success: false, message: "Not authorised." });
+
+  const result = await query(
+    `UPDATE products
+     SET name           = COALESCE($1, name),
+         description    = COALESCE($2, description),
+         price          = COALESCE($3, price),
+         category       = COALESCE($4, category),
+         stock_quantity = COALESCE($5, stock_quantity),
+         is_active      = COALESCE($6, is_active),
+         updated_at     = NOW()
+     WHERE id = $7 RETURNING *`,
+    [name, description, price ? Number(price) : null, category,
+     stock_quantity ? Number(stock_quantity) : null, is_active, id]
+  );
+
+  res.status(200).json({ success: true, product: result.rows[0] });
+};
+
+/* ── DELETE PRODUCT ── DELETE /api/products/:id ─────────────── */
+const deleteProduct = async (req, res) => {
+  const check = await query(
+    `SELECT p.store_id, s.owner_id FROM products p JOIN stores s ON p.store_id = s.id WHERE p.id = $1`,
+    [req.params.id]
+  );
+  if (check.rows.length === 0) return res.status(404).json({ success: false, message: "Product not found." });
+  if (check.rows[0].owner_id !== req.user.id) return res.status(403).json({ success: false, message: "Not authorised." });
+
+  await query("DELETE FROM products WHERE id = $1", [req.params.id]);
+  await query("UPDATE stores SET product_count = product_count - 1 WHERE id = $1", [check.rows[0].store_id]);
+  res.status(200).json({ success: true, message: "Product deleted." });
+};
+
+/* ── LIKE / UNLIKE ── POST /api/products/:id/like ───────────── */
+const likeProduct = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  const existing = await query(
+    "SELECT id FROM product_likes WHERE product_id = $1 AND user_id = $2",
+    [id, userId]
+  );
+
+  if (existing.rows.length > 0) {
+    await query("DELETE FROM product_likes WHERE product_id = $1 AND user_id = $2", [id, userId]);
+    await query("UPDATE products SET like_count = like_count - 1 WHERE id = $1", [id]);
+    return res.status(200).json({ success: true, liked: false });
+  }
+
+  await query("INSERT INTO product_likes (product_id, user_id) VALUES ($1, $2)", [id, userId]);
+  await query("UPDATE products SET like_count = like_count + 1 WHERE id = $1", [id]);
+  res.status(200).json({ success: true, liked: true });
+};
+
+module.exports = { getAllProducts, getProduct, createProduct, updateProduct, deleteProduct, likeProduct };

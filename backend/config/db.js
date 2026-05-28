@@ -1,16 +1,20 @@
-const { Pool } = require("pg")
+const { Pool } = require("pg");
+require("dotenv").config();
 
 const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "maizu_db", // ✅ MUST match DataGrip
-  password: "maizu123",
-  port: 5432,
-})
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
-// ✅ Confirm connection
-pool.connect()
-  .then(() => console.log("✅ Connected to PostgreSQL database"))
-  .catch(err => console.error("❌ Database connection error:", err))
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error("❌ Database connection error:", err.message);
+  } else {
+    console.log("✅ Database connected");
+    release();
+  }
+});
 
-module.exports = pool
+const query = (text, params) => pool.query(text, params);
+
+module.exports = { query, pool };
