@@ -27,7 +27,7 @@ router.get("/my/stores",   protect, requireRole("vendor", "admin"), getMyStores)
 router.get("/:id",         getStore);
 
 // Protected
-router.post("/",           protect, requireRole("vendor", "admin"), storeUpload, createStore);
+router.post("/", protect, storeUpload, createStore);
 router.put("/:id",         protect, storeUpload, updateStore);
 router.delete("/:id",      protect, deleteStore);
 router.post("/:id/follow", protect, followStore);
