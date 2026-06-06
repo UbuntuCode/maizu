@@ -36,6 +36,10 @@ app.get("/api/health", (req, res) => {
 const routeFiles = [
   { path: "/api/vendors",  file: "./routes/vendorRoutes" },
   { path: "/api/products", file: "./routes/productRoutes" },
+  { path: "/api/reviews", file: "./routes/reviewRoutes" },
+  { path: "/api/promos", file: "./routes/promoRoutes" },
+  { path: "/api/wishlist", file: "./routes/wishlistRoutes" },
+  { path: "/api/analytics", file: "./routes/analyticsRoutes" },
   { path: "/api/orders",   file: "./routes/orderRoutes" },
 ];
 

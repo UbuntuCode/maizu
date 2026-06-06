@@ -23,7 +23,7 @@ const storeUpload = upload.fields([
 
 // Public
 router.get("/",            getAllStores);
-router.get("/my/stores",   protect, requireRole("vendor", "admin"), getMyStores);
+router.get("/my/stores",   protect, getMyStores);
 router.get("/:id",         getStore);
 
 // Protected

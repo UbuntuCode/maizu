@@ -60,7 +60,7 @@ const createStore = async (req, res) => {
     return res.status(400).json({ success: false, message: "Name and category required." });
   }
 
-  let logo_url = null;
+  let logo_url   = null;
   let banner_url = null;
 
   if (req.files?.logo?.[0]) {
@@ -76,6 +76,12 @@ const createStore = async (req, res) => {
     `INSERT INTO stores (owner_id, name, description, category, floor_location, logo_url, banner_url)
      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
     [req.user.id, name.trim(), description, category, floor_location, logo_url, banner_url]
+  );
+
+  /* Auto-upgrade user to vendor when they create their first store */
+  await query(
+    "UPDATE users SET role = 'vendor' WHERE id = $1 AND role = 'buyer'",
+    [req.user.id]
   );
 
   res.status(201).json({ success: true, store: result.rows[0] });
@@ -116,8 +122,8 @@ const deleteStore = async (req, res) => {
 
 /* ── FOLLOW / UNFOLLOW ── POST /api/vendors/:id/follow ─────── */
 const followStore = async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
+  const { id }   = req.params;
+  const userId   = req.user.id;
 
   const existing = await query(
     "SELECT id FROM store_followers WHERE store_id = $1 AND user_id = $2",

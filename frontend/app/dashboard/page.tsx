@@ -3,34 +3,23 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { C } from "@/utils/constants";
 import { useAuth } from "@/context/AuthContext";
-import { storesApi, productsApi, ordersApi, type Store } from "@/utils/api";
+import { storesApi, ordersApi, type Store } from "@/utils/api";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/navigation/BottomNav";
 
-/* ── Stat card ──────────────────────────────────────────────── */
-const StatCard = ({
-  emoji, label, value, sub, color = C.primary,
-}: { emoji: string; label: string; value: string; sub?: string; color?: string }) => (
+const StatCard = ({ emoji, label, value, color = C.primary }: { emoji: string; label: string; value: string; color?: string }) => (
   <div style={{ background: C.white, borderRadius: 16, padding: "16px 14px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
-    <div style={{ width: 44, height: 44, borderRadius: 12, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-      {emoji}
-    </div>
+    <div style={{ width: 44, height: 44, borderRadius: 12, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{emoji}</div>
     <div>
       <div style={{ fontSize: 22, fontWeight: 800, color: C.dark, lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>{label}</div>
-      {sub && <div style={{ fontSize: 10, color: color, marginTop: 2, fontWeight: 600 }}>{sub}</div>}
     </div>
   </div>
 );
 
-/* ── Quick action button ────────────────────────────────────── */
-const QuickAction = ({
-  emoji, label, desc, onClick, color = C.primary,
-}: { emoji: string; label: string; desc: string; onClick: () => void; color?: string }) => (
+const QuickAction = ({ emoji, label, desc, onClick, color = C.primary }: { emoji: string; label: string; desc: string; onClick: () => void; color?: string }) => (
   <button onClick={onClick} style={{ background: C.white, borderRadius: 16, padding: "16px 14px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12, border: "none", cursor: "pointer", width: "100%", textAlign: "left" }}>
-    <div style={{ width: 44, height: 44, borderRadius: 12, background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-      {emoji}
-    </div>
+    <div style={{ width: 44, height: 44, borderRadius: 12, background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{emoji}</div>
     <div>
       <div style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>{label}</div>
       <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>{desc}</div>
@@ -39,7 +28,6 @@ const QuickAction = ({
   </button>
 );
 
-/* ── Store row ──────────────────────────────────────────────── */
 const StoreRow = ({ store, onClick }: { store: Store; onClick: () => void }) => (
   <button onClick={onClick} style={{ background: C.white, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, border: `1px solid ${C.border}`, cursor: "pointer", width: "100%", textAlign: "left", marginBottom: 8 }}>
     <div style={{ width: 44, height: 44, borderRadius: 10, background: store.logo_url ? "transparent" : C.softOrange, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 22 }}>
@@ -58,27 +46,21 @@ const StoreRow = ({ store, onClick }: { store: Store; onClick: () => void }) => 
   </button>
 );
 
-/* ══════════════════════════════════════════════════════════════
-   DASHBOARD PAGE
-══════════════════════════════════════════════════════════════ */
 export default function DashboardPage() {
   const router = useRouter();
   const { profile, authUser, loading, isLoggedIn } = useAuth();
 
-  const [stores,       setStores]       = useState<Store[]>([]);
-  const [totalProducts,setTotalProducts]= useState(0);
-  const [totalOrders,  setTotalOrders]  = useState(0);
-  const [pageLoading,  setPageLoading]  = useState(true);
+  const [stores,        setStores]        = useState<Store[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalOrders,   setTotalOrders]   = useState(0);
+  const [pageLoading,   setPageLoading]   = useState(true);
 
-  /* Redirect if not logged in */
   useEffect(() => {
     if (!loading && !isLoggedIn) router.push("/login");
   }, [loading, isLoggedIn, router]);
 
-  /* Load dashboard data */
   useEffect(() => {
     if (!authUser) return;
-
     const load = async () => {
       try {
         const [myStores, myOrders] = await Promise.all([
@@ -87,21 +69,14 @@ export default function DashboardPage() {
         ]);
         setStores(myStores);
         setTotalOrders(myOrders.length);
-
-        /* Count total products across all stores */
-        const total = myStores.reduce((sum, s) => sum + (s.product_count || 0), 0);
-        setTotalProducts(total);
-      } catch (err) {
-        console.error("Dashboard load error:", err);
-      } finally {
-        setPageLoading(false);
-      }
+        setTotalProducts(myStores.reduce((s, st) => s + (st.product_count || 0), 0));
+      } catch { /* silent */ }
+      finally { setPageLoading(false); }
     };
-
     load();
   }, [authUser]);
 
-  const isVendor = profile?.role === "vendor" || profile?.role === "admin";
+  const isVendor   = profile?.role === "vendor" || profile?.role === "admin";
   const displayName = profile?.full_name || authUser?.user_metadata?.full_name || "User";
 
   if (loading || pageLoading) {
@@ -116,10 +91,9 @@ export default function DashboardPage() {
     <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 90 }}>
       <Header />
 
-      {/* Welcome banner */}
-      <div style={{ background: `linear-gradient(135deg, ${C.primary}, #FF8C61)`, padding: "24px 16px 28px", position: "relative", overflow: "hidden" }}>
+      {/* Hero */}
+      <div style={{ background: `linear-gradient(135deg,${C.primary},#FF8C61)`, padding: "24px 16px 28px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -20, right: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.1)" }} />
-        <div style={{ position: "absolute", bottom: -30, right: 20, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
         <div style={{ position: "relative" }}>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Welcome back 👋</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{displayName}</div>
@@ -131,61 +105,50 @@ export default function DashboardPage() {
 
       <div style={{ padding: "0 16px", marginTop: -16, position: "relative", zIndex: 10 }}>
 
-        {/* Stats grid */}
+        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
-          <StatCard emoji="🏪" label="My Stores"   value={stores.length.toString()}        color={C.primary} />
-          <StatCard emoji="🏷️" label="Products"    value={totalProducts.toString()}         color="#3B82F6" />
-          <StatCard emoji="📦" label="Orders"       value={totalOrders.toString()}           color="#10B981" />
+          <StatCard emoji="🏪" label="My Stores"   value={stores.length.toString()}   color={C.primary} />
+          <StatCard emoji="🏷️" label="Products"    value={totalProducts.toString()}    color="#3B82F6" />
+          <StatCard emoji="📦" label="Orders"       value={totalOrders.toString()}      color="#10B981" />
           <StatCard emoji="👥" label="Followers"    value={stores.reduce((s, st) => s + (st.follower_count || 0), 0).toString()} color="#8B5CF6" />
         </div>
 
-        {/* Vendor quick actions */}
-        {isVendor && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 12 }}>Quick Actions</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <QuickAction
-                emoji="🏪" label="Open New Store" color={C.primary}
-                desc="Create a new storefront on Maizu Mall"
-                onClick={() => router.push("/dashboard/create-store")}
-              />
-              <QuickAction
-                emoji="📦" label="Add Product" color="#3B82F6"
-                desc="Add a product to one of your stores"
-                onClick={() => stores.length > 0 ? router.push(`/dashboard/stores/${stores[0].id}`) : router.push("/dashboard/create-store")}
-              />
-              <QuickAction
-                emoji="📊" label="View Orders" color="#10B981"
-                desc="See all orders across your stores"
-                onClick={() => router.push("/dashboard/orders")}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Buyer quick actions */}
-        {!isVendor && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 12 }}>Quick Actions</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <QuickAction
-                emoji="🛍" label="Browse Stores" color={C.primary}
-                desc="Discover products from South African vendors"
-                onClick={() => router.push("/stores")}
-              />
-              <QuickAction
-                emoji="📦" label="My Orders" color="#10B981"
-                desc="Track your orders and delivery status"
-                onClick={() => router.push("/dashboard/orders")}
-              />
-              <QuickAction
-                emoji="🏪" label="Become a Vendor" color="#8B5CF6"
+        {/* Quick actions */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 12 }}>Quick Actions</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {isVendor && (
+              <>
+                <QuickAction emoji="📊" label="View Analytics" color="#8B5CF6"
+                  desc="Sales charts, revenue trends and top products"
+                  onClick={() => router.push("/dashboard/analytics")}
+                />
+                <QuickAction emoji="🏪" label="Open New Store" color={C.primary}
+                  desc="Create a new storefront on Maizu Mall"
+                  onClick={() => router.push("/dashboard/create-store")}
+                />
+                <QuickAction emoji="📦" label="Add Product" color="#3B82F6"
+                  desc="Add a product to one of your stores"
+                  onClick={() => stores.length > 0 ? router.push(`/dashboard/stores/${stores[0].id}`) : router.push("/dashboard/create-store")}
+                />
+              </>
+            )}
+            <QuickAction emoji="🛍" label="Browse Stores" color="#10B981"
+              desc="Discover products from South African vendors"
+              onClick={() => router.push("/stores")}
+            />
+            <QuickAction emoji="📋" label="My Orders" color="#F59E0B"
+              desc="Track your orders and delivery status"
+              onClick={() => router.push("/orders")}
+            />
+            {!isVendor && (
+              <QuickAction emoji="🚀" label="Become a Vendor" color="#8B5CF6"
                 desc="Open your own store and start selling"
-                onClick={() => router.push("/register")}
+                onClick={() => router.push("/dashboard/become-vendor")}
               />
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* My Stores */}
         {isVendor && (
@@ -201,32 +164,17 @@ export default function DashboardPage() {
               <div style={{ background: C.white, borderRadius: 16, padding: "28px 20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                 <div style={{ fontSize: 36, marginBottom: 10 }}>🏪</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.dark, marginBottom: 6 }}>No stores yet</div>
-                <div style={{ fontSize: 12, color: C.gray, marginBottom: 16 }}>Create your first store to start selling</div>
                 <button onClick={() => router.push("/dashboard/create-store")} style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 22, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                   Create First Store
                 </button>
               </div>
             ) : (
               stores.map(store => (
-                <StoreRow
-                  key={store.id}
-                  store={store}
-                  onClick={() => router.push(`/dashboard/stores/${store.id}`)}
-                />
+                <StoreRow key={store.id} store={store} onClick={() => router.push(`/dashboard/stores/${store.id}`)} />
               ))
             )}
           </div>
         )}
-
-        {/* Recent activity placeholder */}
-        <div style={{ background: C.white, borderRadius: 16, padding: "18px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 14 }}>Recent Activity</div>
-          <div style={{ textAlign: "center", padding: "20px 0", color: C.gray }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
-            <div style={{ fontSize: 13 }}>No recent activity yet</div>
-          </div>
-        </div>
-
       </div>
 
       <BottomNav />

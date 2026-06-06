@@ -1,77 +1,99 @@
 "use client";
-import { useRouter, usePathname } from "next/navigation";
+import React from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { C } from "@/utils/constants";
-import { HomeIc, StoreIc, LiveIc, UserIc, PlayIc } from "@/components/ui/icons";
-
-const tabs = [
-  { id: "home",     label: "Home",     path: "/" },
-  { id: "stores",   label: "Stores",   path: "/stores" },
-  { id: "discover", label: "Discover", path: "/discover", fab: true },
-  { id: "live",     label: "Live",     path: "/live" },
-  { id: "profile",  label: "Profile",  path: "/profile" },
-];
+import { useWishlist } from "@/context/WishlistContext";
 
 export default function BottomNav() {
-  const router   = useRouter();
-  const pathname = usePathname();
+  const pathname    = usePathname();
+  const router      = useRouter();
+  const { totalItems: wishlistCount } = useWishlist();
+
+  const tabs = [
+    { path: "/",         icon: "🏠", label: "Home"    },
+    { path: "/stores",   icon: "🏪", label: "Stores"  },
+    { path: "/search",   icon: "🔍", label: "Search"  },
+    { path: "/wishlist", icon: "❤️", label: "Saved",  badge: wishlistCount },
+    { path: "/profile",  icon: "👤", label: "Profile" },
+  ];
 
   const isActive = (path: string) => {
-    if (path === "/" ) return pathname === "/";
+    if (path === "/") return pathname === "/";
     return pathname.startsWith(path);
   };
 
   return (
-    <div style={{
-      position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-      width: "100%", maxWidth: 430,
-      background: C.white, borderTop: `1px solid ${C.border}`,
-      display: "flex", alignItems: "flex-end",
-      zIndex: 500, height: 70, paddingBottom: 6
+    <nav style={{
+      position:       "fixed",
+      bottom:         0,
+      left:           "50%",
+      transform:      "translateX(-50%)",
+      width:          "100%",
+      maxWidth:       430,
+      height:         64,
+      background:     "#fff",
+      borderTop:      `1px solid ${C.border}`,
+      display:        "flex",
+      alignItems:     "center",
+      justifyContent: "space-around",
+      zIndex:         300,
+      paddingBottom:  "env(safe-area-inset-bottom)",
     }}>
-      {tabs.map(t => (
+      {tabs.map(tab => (
         <button
-          key={t.id}
-          onClick={() => router.push(t.path)}
+          key={tab.path}
+          onClick={() => router.push(tab.path)}
           style={{
-            flex: 1, background: "none", border: "none", cursor: "pointer",
-            display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "flex-end",
-            gap: 3, height: "100%", paddingBottom: 0
+            flex:           1,
+            display:        "flex",
+            flexDirection:  "column",
+            alignItems:     "center",
+            justifyContent: "center",
+            gap:            3,
+            background:     "none",
+            border:         "none",
+            cursor:         "pointer",
+            padding:        "6px 0",
+            position:       "relative",
+            WebkitTapHighlightColor: "transparent",
           }}
         >
-          {t.fab ? (
-            <>
-              <div style={{
-                width: 54, height: 54, borderRadius: "50%",
-                background: `linear-gradient(145deg,#FF6B3D,${C.primary})`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: `0 4px 16px ${C.primary}60`,
-                transform: "translateY(-10px)"
-              }}>
-                <PlayIc sz={22} />
-              </div>
-              <span style={{
-                fontSize: 10,
-                color: isActive(t.path) ? C.primary : C.gray,
-                fontWeight: isActive(t.path) ? 700 : 400,
-                marginTop: -12
-              }}>{t.label}</span>
-            </>
-          ) : (
-            <>
-              {t.id === "home"    && <HomeIc  a={isActive(t.path)} />}
-              {t.id === "stores"  && <StoreIc a={isActive(t.path)} />}
-              {t.id === "live"    && <LiveIc  a={isActive(t.path)} />}
-              {t.id === "profile" && <UserIc  a={isActive(t.path)} />}
-              <span style={{
-                fontSize: 10,
-                color: isActive(t.path) ? C.primary : C.gray,
-                fontWeight: isActive(t.path) ? 700 : 400
-              }}>{t.label}</span>
-            </>
+          <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.icon}</span>
+          <span style={{
+            fontSize:   9,
+            fontWeight: isActive(tab.path) ? 700 : 500,
+            color:      isActive(tab.path) ? C.primary : C.gray,
+          }}>
+            {tab.label}
+          </span>
+          {/* Active dot */}
+          {isActive(tab.path) && (
+            <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.primary }} />
+          )}
+          {/* Wishlist count badge */}
+          {tab.badge !== undefined && tab.badge > 0 && !isActive(tab.path) && (
+            <div style={{
+              position:       "absolute",
+              top:            2,
+              right:          "50%",
+              transform:      "translateX(8px)",
+              background:     "#EF4444",
+              color:          "#fff",
+              borderRadius:   "50%",
+              width:          16,
+              height:         16,
+              fontSize:       9,
+              fontWeight:     800,
+              display:        "flex",
+              alignItems:     "center",
+              justifyContent: "center",
+              border:         "2px solid #fff",
+            }}>
+              {tab.badge > 9 ? "9+" : tab.badge}
+            </div>
           )}
         </button>
       ))}
-    </div>
+    </nav>
   );
 }
