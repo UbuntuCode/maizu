@@ -39,7 +39,9 @@ const routeFiles = [
   { path: "/api/reviews", file: "./routes/reviewRoutes" },
   { path: "/api/promos", file: "./routes/promoRoutes" },
   { path: "/api/wishlist", file: "./routes/wishlistRoutes" },
+  { path: "/api/notifications", file: "./routes/notificationRoutes" },
   { path: "/api/analytics", file: "./routes/analyticsRoutes" },
+  { path: "/api/subscriptions", file: "./routes/subscriptionRoutes" },
   { path: "/api/orders",   file: "./routes/orderRoutes" },
 ];
 
