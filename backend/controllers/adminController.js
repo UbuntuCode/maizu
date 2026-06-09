@@ -1,0 +1,243 @@
+const { query } = require("../config/db");
+
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD STATS
+══════════════════════════════════════════════════════════════ */
+const getDashboardStats = async (req, res) => {
+  try {
+    const [users, stores, orders, revenue, newUsers, newOrders] = await Promise.all([
+      query("SELECT COUNT(*) AS count FROM users"),
+      query("SELECT COUNT(*) AS count FROM stores WHERE is_active = true"),
+      query("SELECT COUNT(*) AS count FROM orders"),
+      query("SELECT COALESCE(SUM(total_amount),0) AS total FROM orders WHERE status != 'cancelled'"),
+      /* New users last 7 days */
+      query("SELECT COUNT(*) AS count FROM users WHERE created_at >= NOW() - INTERVAL '7 days'"),
+      /* New orders last 7 days */
+      query("SELECT COUNT(*) AS count FROM orders WHERE created_at >= NOW() - INTERVAL '7 days'"),
+    ]);
+
+    /* Daily signups last 14 days */
+    const signupsResult = await query(
+      `SELECT DATE(created_at) AS day, COUNT(*) AS count
+       FROM users
+       WHERE created_at >= NOW() - INTERVAL '14 days'
+       GROUP BY DATE(created_at) ORDER BY day ASC`
+    );
+
+    /* Orders by status */
+    const orderStatusResult = await query(
+      `SELECT status, COUNT(*) AS count
+       FROM orders GROUP BY status`
+    );
+
+    /* Top 5 stores by revenue */
+    const topStoresResult = await query(
+      `SELECT s.name, s.logo_url, s.id,
+              COALESCE(SUM(oi.subtotal),0) AS revenue,
+              COUNT(DISTINCT o.id) AS orders
+       FROM stores s
+       LEFT JOIN order_items oi ON oi.store_id = s.id
+       LEFT JOIN orders o ON o.id = oi.order_id AND o.status != 'cancelled'
+       GROUP BY s.id, s.name, s.logo_url
+       ORDER BY revenue DESC LIMIT 5`
+    );
+
+    /* Revenue last 14 days */
+    const revenueResult = await query(
+      `SELECT DATE(created_at) AS day, COALESCE(SUM(total_amount),0) AS revenue
+       FROM orders
+       WHERE created_at >= NOW() - INTERVAL '14 days'
+         AND status != 'cancelled'
+       GROUP BY DATE(created_at) ORDER BY day ASC`
+    );
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        total_users:   Number(users.rows[0].count),
+        total_stores:  Number(stores.rows[0].count),
+        total_orders:  Number(orders.rows[0].count),
+        total_revenue: Number(revenue.rows[0].total),
+        new_users_7d:  Number(newUsers.rows[0].count),
+        new_orders_7d: Number(newOrders.rows[0].count),
+      },
+      charts: {
+        signups:       signupsResult.rows,
+        order_status:  orderStatusResult.rows,
+        top_stores:    topStoresResult.rows,
+        revenue:       revenueResult.rows,
+      },
+    });
+  } catch (err) {
+    console.error("Admin stats error:", err.message);
+    res.status(500).json({ success: false, message: "Failed to load stats." });
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   USER MANAGEMENT
+══════════════════════════════════════════════════════════════ */
+const getUsers = async (req, res) => {
+  const { search, role, limit = 50, offset = 0 } = req.query;
+
+  var sql    = "SELECT id, full_name, email, role, plan, created_at, avatar_url FROM users WHERE 1=1";
+  var params = [];
+
+  if (search) {
+    params.push(`%${search}%`);
+    sql += ` AND (full_name ILIKE $${params.length} OR email ILIKE $${params.length})`;
+  }
+  if (role && role !== "all") {
+    params.push(role);
+    sql += ` AND role = $${params.length}`;
+  }
+  sql += " ORDER BY created_at DESC";
+  params.push(Number(limit));
+  sql += ` LIMIT $${params.length}`;
+  params.push(Number(offset));
+  sql += ` OFFSET $${params.length}`;
+
+  const result = await query(sql, params);
+
+  /* Count */
+  var countSql    = "SELECT COUNT(*) AS total FROM users WHERE 1=1";
+  var countParams = [];
+  if (search)                 { countParams.push(`%${search}%`); countSql += ` AND (full_name ILIKE $${countParams.length} OR email ILIKE $${countParams.length})`; }
+  if (role && role !== "all") { countParams.push(role);           countSql += ` AND role = $${countParams.length}`; }
+  const countResult = await query(countSql, countParams);
+
+  res.status(200).json({ success: true, users: result.rows, total: Number(countResult.rows[0].total) });
+};
+
+const updateUserRole = async (req, res) => {
+  const { id }   = req.params;
+  const { role } = req.body;
+
+  if (!["buyer", "vendor", "admin"].includes(role)) {
+    return res.status(400).json({ success: false, message: "Invalid role." });
+  }
+  if (id === req.user.id) {
+    return res.status(400).json({ success: false, message: "Cannot change your own role." });
+  }
+
+  const result = await query(
+    "UPDATE users SET role = $1 WHERE id = $2 RETURNING id, full_name, email, role",
+    [role, id]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ success: false, message: "User not found." });
+  res.status(200).json({ success: true, user: result.rows[0] });
+};
+
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+  if (id === req.user.id) {
+    return res.status(400).json({ success: false, message: "Cannot delete your own account." });
+  }
+  await query("DELETE FROM users WHERE id = $1", [id]);
+  res.status(200).json({ success: true, message: "User deleted." });
+};
+
+/* ══════════════════════════════════════════════════════════════
+   STORE MANAGEMENT
+══════════════════════════════════════════════════════════════ */
+const getStores = async (req, res) => {
+  const { search, limit = 50, offset = 0 } = req.query;
+
+  var sql    = `SELECT s.*, u.full_name AS owner_name, u.email AS owner_email
+                FROM stores s JOIN users u ON s.owner_id = u.id WHERE 1=1`;
+  var params = [];
+
+  if (search) {
+    params.push(`%${search}%`);
+    sql += ` AND (s.name ILIKE $${params.length} OR u.full_name ILIKE $${params.length})`;
+  }
+
+  sql += " ORDER BY s.created_at DESC";
+  params.push(Number(limit));
+  sql += ` LIMIT $${params.length}`;
+  params.push(Number(offset));
+  sql += ` OFFSET $${params.length}`;
+
+  const result = await query(sql, params);
+
+  var countSql = "SELECT COUNT(*) AS total FROM stores s JOIN users u ON s.owner_id = u.id WHERE 1=1";
+  var cp = [];
+  if (search) { cp.push(`%${search}%`); countSql += ` AND (s.name ILIKE $1 OR u.full_name ILIKE $1)`; }
+  const countResult = await query(countSql, cp);
+
+  res.status(200).json({ success: true, stores: result.rows, total: Number(countResult.rows[0].total) });
+};
+
+const toggleStoreActive = async (req, res) => {
+  const result = await query(
+    "UPDATE stores SET is_active = NOT is_active WHERE id = $1 RETURNING id, name, is_active",
+    [req.params.id]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Store not found." });
+  res.status(200).json({ success: true, store: result.rows[0] });
+};
+
+const toggleStoreTrending = async (req, res) => {
+  const result = await query(
+    "UPDATE stores SET is_trending = NOT is_trending WHERE id = $1 RETURNING id, name, is_trending",
+    [req.params.id]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Store not found." });
+  res.status(200).json({ success: true, store: result.rows[0] });
+};
+
+const adminDeleteStore = async (req, res) => {
+  await query("DELETE FROM stores WHERE id = $1", [req.params.id]);
+  res.status(200).json({ success: true, message: "Store deleted." });
+};
+
+/* ══════════════════════════════════════════════════════════════
+   ORDER MANAGEMENT
+══════════════════════════════════════════════════════════════ */
+const getAllOrders = async (req, res) => {
+  const { status, search, limit = 50, offset = 0 } = req.query;
+
+  var sql    = `SELECT o.*, u.full_name AS buyer_name, u.email AS buyer_email
+                FROM orders o JOIN users u ON o.buyer_id = u.id WHERE 1=1`;
+  var params = [];
+
+  if (status && status !== "all") {
+    params.push(status);
+    sql += ` AND o.status = $${params.length}`;
+  }
+  if (search) {
+    params.push(`%${search}%`);
+    sql += ` AND (u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length})`;
+  }
+
+  sql += " ORDER BY o.created_at DESC";
+  params.push(Number(limit));
+  sql += ` LIMIT $${params.length}`;
+  params.push(Number(offset));
+  sql += ` OFFSET $${params.length}`;
+
+  const result      = await query(sql, params);
+  const countResult = await query("SELECT COUNT(*) AS total FROM orders");
+
+  res.status(200).json({ success: true, orders: result.rows, total: Number(countResult.rows[0].total) });
+};
+
+const adminUpdateOrderStatus = async (req, res) => {
+  const { status } = req.body;
+  const valid = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
+  if (!valid.includes(status)) return res.status(400).json({ success: false, message: "Invalid status." });
+
+  const result = await query(
+    "UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
+    [status, req.params.id]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Order not found." });
+  res.status(200).json({ success: true, order: result.rows[0] });
+};
+
+module.exports = {
+  getDashboardStats,
+  getUsers, updateUserRole, deleteUser,
+  getStores, toggleStoreActive, toggleStoreTrending, adminDeleteStore,
+  getAllOrders, adminUpdateOrderStatus,
+};
