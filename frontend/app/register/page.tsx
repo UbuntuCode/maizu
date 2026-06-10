@@ -2,71 +2,134 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { C } from "@/utils/constants";
-import Logo from "@/components/ui/Logo";
+import { supabase } from "@/utils/supabase";
 import { useAuth } from "@/context/AuthContext";
 
-export default function RegisterPage() {
-  const router                      = useRouter();
-  const { signUp, isLoggedIn, loading } = useAuth();
+const P = "#E8401C";
+const DARK = "#0F0F0F";
+const MUTED = "#71717A";
+const BORDER = "#E4E4E7";
+const BG = "#F7F7F5";
 
-  const [form, setForm] = useState({
-    full_name: "",
-    email:     "",
-    password:  "",
-    confirm:   "",
-    role:      "buyer" as "buyer" | "vendor",
-  });
-  const [busy,  setBusy]  = useState(false);
-  const [error, setError] = useState("");
-  const [done,  setDone]  = useState(false); // email confirmation state
+/* ── Password strength checker ─────────────────────────────── */
+interface StrengthResult {
+  score:    0 | 1 | 2 | 3 | 4;
+  label:    string;
+  color:    string;
+  checks: {
+    length:    boolean;
+    upper:     boolean;
+    lower:     boolean;
+    number:    boolean;
+    special:   boolean;
+  };
+}
+
+const checkStrength = (pw: string): StrengthResult => {
+  const checks = {
+    length:  pw.length >= 8,
+    upper:   /[A-Z]/.test(pw),
+    lower:   /[a-z]/.test(pw),
+    number:  /[0-9]/.test(pw),
+    special: /[^A-Za-z0-9]/.test(pw),
+  };
+  const passed = Object.values(checks).filter(Boolean).length;
+  const scores: [string, string][] = [
+    ["Too short",  "#EF4444"],
+    ["Weak",       "#EF4444"],
+    ["Fair",       "#F59E0B"],
+    ["Good",       "#3B82F6"],
+    ["Strong",     "#10B981"],
+  ];
+  return { score: passed as 0|1|2|3|4, label: scores[passed][0], color: scores[passed][1], checks };
+};
+
+/* ── Check rule item ────────────────────────────────────────── */
+const Rule = ({ ok, text }: { ok: boolean; text: string }) => (
+  <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:ok?"#10B981":MUTED }}>
+    <div style={{ width:14, height:14, borderRadius:"50%", background:ok?"#D1FAE5":"#F3F4F6", border:`1px solid ${ok?"#10B981":BORDER}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+      {ok && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+    </div>
+    {text}
+  </div>
+);
+
+/* ── Eye toggle ─────────────────────────────────────────────── */
+const Eye = ({ show, toggle }: { show: boolean; toggle: () => void }) => (
+  <button type="button" onClick={toggle} style={{ background:"none", border:"none", cursor:"pointer", padding:4, color:MUTED, display:"flex" }}>
+    {show
+      ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    }
+  </button>
+);
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const { isLoggedIn } = useAuth();
+
+  const [form, setForm] = useState({ full_name:"", email:"", password:"", confirm:"" });
+  const [showPw,  setShowPw]  = useState(false);
+  const [showCfm, setShowCfm] = useState(false);
+  const [busy,    setBusy]    = useState(false);
+  const [error,   setError]   = useState("");
+  const [step,    setStep]    = useState<"form"|"verify">("form");
+  const [agreed,  setAgreed]  = useState(false);
 
   useEffect(() => {
-    if (!loading && isLoggedIn) router.replace("/");
-  }, [isLoggedIn, loading, router]);
+    if (isLoggedIn) router.push("/");
+    /* Show onboarding to new visitors */
+    if (!localStorage.getItem("maizu_onboarded")) router.push("/onboarding");
+  }, [isLoggedIn, router]);
 
-  const set = (k: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm(prev => ({ ...prev, [k]: e.target.value }));
+  const strength = checkStrength(form.password);
+  const isValid  = strength.score >= 3 && form.password === form.confirm && form.full_name.trim().length >= 2 && form.email.includes("@") && agreed;
 
-  const validate = (): string | null => {
-    if (!form.full_name.trim())   return "Please enter your full name.";
-    if (!form.email.trim())       return "Please enter your email.";
-    if (form.password.length < 8) return "Password must be at least 8 characters.";
-    if (form.password !== form.confirm) return "Passwords do not match.";
-    return null;
+  const inp: React.CSSProperties = {
+    width:"100%", padding:"13px 14px", background:"#FAFAFA",
+    border:`1.5px solid ${BORDER}`, borderRadius:12,
+    fontSize:14, color:DARK, outline:"none", boxSizing:"border-box",
   };
 
-  const handleRegister = async () => {
-    const err = validate();
-    if (err) { setError(err); return; }
-    setError("");
-    setBusy(true);
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isValid) return;
+    if (strength.score < 3) { setError("Please choose a stronger password."); return; }
+    if (form.password !== form.confirm) { setError("Passwords don't match."); return; }
+
+    setBusy(true); setError("");
     try {
-      await signUp(form.email.trim().toLowerCase(), form.password, form.full_name.trim(), form.role);
-      // Supabase sends a confirmation email by default.
-      // If email confirmation is disabled in Supabase dashboard, user is logged in immediately.
-      setDone(true);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed.");
+      const { error: signUpError } = await supabase.auth.signUp({
+        email:    form.email.trim().toLowerCase(),
+        password: form.password,
+        options: {
+          data: { full_name: form.full_name.trim() },
+          /* Persistent session — stays signed in */
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+      if (signUpError) throw signUpError;
+      setStep("verify");
+    } catch (err: any) {
+      setError(err.message || "Registration failed. Please try again.");
     } finally {
       setBusy(false);
     }
   };
 
-  if (loading) return null;
-
-  // Show success screen after register
-  if (done) {
+  if (step === "verify") {
     return (
-      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-        <div style={{ maxWidth: 380, width: "100%", background: C.white, borderRadius: 20, padding: "40px 28px", textAlign: "center", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
-          <div style={{ fontSize: 52, marginBottom: 16 }}>🎉</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: C.dark, marginBottom: 10 }}>You&apos;re in!</div>
-          <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.7, marginBottom: 24 }}>
-            Account created successfully. Check your email for a confirmation link, then come back to sign in.
+      <div style={{ minHeight:"100vh", background:BG, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:28 }}>
+        <div style={{ maxWidth:340, width:"100%", textAlign:"center" }}>
+          <div style={{ width:80, height:80, borderRadius:"50%", background:"#D1FAE5", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           </div>
-          <button onClick={() => router.push("/login")} style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 14, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            Go to Sign In
+          <h2 style={{ fontSize:22, fontWeight:800, color:DARK, marginBottom:10 }}>Check your email</h2>
+          <p style={{ fontSize:14, color:MUTED, lineHeight:1.7, marginBottom:28 }}>
+            We sent a verification link to <strong style={{ color:DARK }}>{form.email}</strong>. Click the link to activate your account.
+          </p>
+          <button onClick={() => router.push("/login")} style={{ width:"100%", background:P, color:"#fff", border:"none", borderRadius:14, padding:"14px 0", fontSize:15, fontWeight:700, cursor:"pointer" }}>
+            Go to sign in
           </button>
         </div>
       </div>
@@ -74,71 +137,110 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
-      <div style={{ height: 60, background: C.white, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Logo />
+    <div style={{ minHeight:"100vh", background:BG, display:"flex", flexDirection:"column" }}>
+      {/* Header */}
+      <div style={{ background:"#fff", padding:"16px 20px", borderBottom:`0.5px solid ${BORDER}`, display:"flex", alignItems:"center", gap:12 }}>
+        <button onClick={() => router.back()} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={DARK} strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div style={{ fontSize:16, fontWeight:700, color:DARK }}>Create account</div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 20px 80px" }}>
-        <div style={{ width: "100%", maxWidth: 380, background: C.white, borderRadius: 20, padding: "32px 24px", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
+      <div style={{ flex:1, padding:"24px 20px 40px", maxWidth:440, width:"100%", margin:"0 auto" }}>
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <div style={{ fontSize:28, fontWeight:900 }}><span style={{ color:P }}>mai</span><span style={{ color:DARK }}>zu</span></div>
+          <div style={{ fontSize:12, color:MUTED, marginTop:2 }}>Join South Africa's marketplace</div>
+        </div>
 
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <div style={{ width: 64, height: 64, background: C.softOrange, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, margin: "0 auto 14px" }}>🚀</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: C.dark, marginBottom: 5 }}>Create Account</div>
-            <div style={{ fontSize: 13, color: C.gray }}>Join 1,247+ South African entrepreneurs</div>
+        {error && (
+          <div style={{ background:"#FEE2E2", border:"1px solid #FCA5A5", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#991B1B" }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleRegister} style={{ display:"flex", flexDirection:"column", gap:16 }}>
+
+          {/* Full name */}
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:DARK, display:"block", marginBottom:6 }}>Full name</label>
+            <input value={form.full_name} onChange={e => setForm(p => ({...p, full_name:e.target.value}))}
+              placeholder="Sipho Dlamini" autoComplete="name" style={inp} />
           </div>
 
-          {error && (
-            <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#991B1B" }}>
-              {error}
-            </div>
-          )}
-
-          {/* Role picker */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 7 }}>I want to</label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {(["buyer", "vendor"] as const).map(r => (
-                <button key={r} type="button" onClick={() => setForm(p => ({ ...p, role: r }))}
-                  style={{ padding: "10px 0", border: `2px solid ${form.role === r ? C.primary : C.border}`, borderRadius: 12, fontSize: 13, fontWeight: form.role === r ? 700 : 500, color: form.role === r ? C.primary : C.gray, background: form.role === r ? C.softOrange : C.white, cursor: "pointer" }}>
-                  {r === "buyer" ? "🛍 Shop" : "🏪 Sell"}
-                </button>
-              ))}
-            </div>
+          {/* Email */}
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:DARK, display:"block", marginBottom:6 }}>Email address</label>
+            <input value={form.email} onChange={e => setForm(p => ({...p, email:e.target.value}))}
+              type="email" placeholder="sipho@email.com" autoComplete="email" style={inp} />
           </div>
 
-          {/* Fields */}
-          {[
-            { label: "Full Name",        key: "full_name", type: "text",     ph: "Kofi Mensah" },
-            { label: "Email Address",    key: "email",     type: "email",    ph: "you@example.com" },
-            { label: "Password",         key: "password",  type: "password", ph: "Min. 8 characters" },
-            { label: "Confirm Password", key: "confirm",   type: "password", ph: "Repeat password" },
-          ].map(f => (
-            <div key={f.key} style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 6 }}>{f.label}</label>
-              <input type={f.type} value={form[f.key as keyof typeof form]} onChange={set(f.key as keyof typeof form)} placeholder={f.ph}
-                style={{ width: "100%", padding: "12px 14px", border: `1.5px solid ${C.border}`, borderRadius: 12, fontSize: 14, outline: "none", color: C.dark, boxSizing: "border-box", background: "#FAFAFA" }} />
+          {/* Password */}
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:DARK, display:"block", marginBottom:6 }}>Password</label>
+            <div style={{ position:"relative", display:"flex", alignItems:"center" }}>
+              <input value={form.password} onChange={e => setForm(p => ({...p, password:e.target.value}))}
+                type={showPw?"text":"password"} placeholder="Create a strong password" autoComplete="new-password"
+                style={{ ...inp, paddingRight:44 }} />
+              <div style={{ position:"absolute", right:10 }}><Eye show={showPw} toggle={() => setShowPw(s=>!s)} /></div>
             </div>
-          ))}
 
-          {/* Benefits */}
-          <div style={{ background: C.softOrange, borderRadius: 12, padding: "12px 14px", marginBottom: 20 }}>
-            {["Only 5% commission", "Free store setup", "Reach 50K+ daily shoppers"].map(b => (
-              <div key={b} style={{ fontSize: 11, color: C.dark, marginBottom: 3, display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ color: C.green, fontWeight: 700 }}>✓</span> {b}
+            {/* Strength bar */}
+            {form.password.length > 0 && (
+              <div style={{ marginTop:8 }}>
+                <div style={{ height:3, background:"#F3F4F6", borderRadius:2, overflow:"hidden", marginBottom:6 }}>
+                  <div style={{ height:"100%", width:`${(strength.score/4)*100}%`, background:strength.color, borderRadius:2, transition:"all 0.3s" }} />
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                  <span style={{ fontSize:11, color:strength.color, fontWeight:600 }}>{strength.label}</span>
+                  <span style={{ fontSize:10, color:MUTED }}>{4 - strength.score} requirement{4 - strength.score !== 1 ? "s" : ""} remaining</span>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"4px 16px" }}>
+                  <Rule ok={strength.checks.length}  text="At least 8 characters" />
+                  <Rule ok={strength.checks.upper}   text="One uppercase letter" />
+                  <Rule ok={strength.checks.lower}   text="One lowercase letter" />
+                  <Rule ok={strength.checks.number}  text="One number" />
+                  <Rule ok={strength.checks.special} text="One special character" />
+                </div>
               </div>
-            ))}
+            )}
           </div>
 
-          <button onClick={handleRegister} disabled={busy}
-            style={{ width: "100%", background: busy ? C.grayLight : C.primary, color: "#fff", border: "none", borderRadius: 14, padding: "14px 0", fontSize: 15, fontWeight: 700, cursor: busy ? "default" : "pointer", marginBottom: 16 }}>
-            {busy ? "Creating account…" : "Create My Account 🎉"}
+          {/* Confirm password */}
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:DARK, display:"block", marginBottom:6 }}>Confirm password</label>
+            <div style={{ position:"relative", display:"flex", alignItems:"center" }}>
+              <input value={form.confirm} onChange={e => setForm(p => ({...p, confirm:e.target.value}))}
+                type={showCfm?"text":"password"} placeholder="Re-enter your password" autoComplete="new-password"
+                style={{ ...inp, paddingRight:44, borderColor: form.confirm && form.confirm !== form.password ? "#EF4444" : BORDER }} />
+              <div style={{ position:"absolute", right:10 }}><Eye show={showCfm} toggle={() => setShowCfm(s=>!s)} /></div>
+            </div>
+            {form.confirm && form.confirm !== form.password && (
+              <div style={{ fontSize:11, color:"#EF4444", marginTop:4 }}>Passwords don&apos;t match</div>
+            )}
+          </div>
+
+          {/* Terms */}
+          <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+            <div onClick={() => setAgreed(a => !a)} style={{ width:20, height:20, borderRadius:5, border:`2px solid ${agreed?P:BORDER}`, background:agreed?P:"transparent", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginTop:1 }}>
+              {agreed && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+            </div>
+            <span style={{ fontSize:12, color:MUTED, lineHeight:1.5 }}>
+              I agree to Maizu&apos;s <span style={{ color:P, cursor:"pointer" }}>Terms of Service</span> and <span style={{ color:P, cursor:"pointer" }}>Privacy Policy</span>
+            </span>
+          </div>
+
+          <button type="submit" disabled={!isValid || busy}
+            style={{ background:!isValid||busy?"#D1D5DB":P, color:"#fff", border:"none", borderRadius:14, padding:"15px 0", fontSize:15, fontWeight:700, cursor:!isValid||busy?"default":"pointer", marginTop:4 }}>
+            {busy ? "Creating account…" : "Create account"}
           </button>
+        </form>
 
-          <div style={{ textAlign: "center" }}>
-            <span style={{ fontSize: 13, color: C.gray }}>Already have an account? </span>
-            <span onClick={() => router.push("/login")} style={{ fontSize: 13, color: C.primary, fontWeight: 700, cursor: "pointer" }}>Sign In</span>
-          </div>
+        <div style={{ textAlign:"center", marginTop:20, fontSize:13, color:MUTED }}>
+          Already have an account?{" "}
+          <button onClick={() => router.push("/login")} style={{ background:"none", border:"none", color:P, fontWeight:700, cursor:"pointer", fontSize:13 }}>
+            Sign in
+          </button>
         </div>
       </div>
     </div>

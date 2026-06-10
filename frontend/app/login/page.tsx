@@ -1,133 +1,174 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { C } from "@/utils/constants";
-import Logo from "@/components/ui/Logo";
+import { supabase } from "@/utils/supabase";
 import { useAuth } from "@/context/AuthContext";
 
-export default function LoginPage() {
-  const router                    = useRouter();
-  const { signIn, isLoggedIn, loading } = useAuth();
+const P     = "#E8401C";
+const DARK  = "#0F0F0F";
+const MUTED = "#71717A";
+const BORDER= "#E4E4E7";
+const BG    = "#F7F7F5";
 
-  const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
-  const [busy,     setBusy]     = useState(false);
-  const [error,    setError]    = useState("");
-  const [showPass, setShowPass] = useState(false);
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (!loading && isLoggedIn) router.replace("/");
-  }, [isLoggedIn, loading, router]);
-
-  const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      setError("Please enter your email and password.");
-      return;
+const Eye = ({ show, toggle }: { show: boolean; toggle: () => void }) => (
+  <button type="button" onClick={toggle} style={{ background:"none", border:"none", cursor:"pointer", padding:4, color:MUTED, display:"flex" }}>
+    {show
+      ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
     }
-    setError("");
-    setBusy(true);
+  </button>
+);
+
+export default function LoginPage() {
+  const router = useRouter();
+  const { isLoggedIn } = useAuth();
+
+  const [email,  setEmail]  = useState("");
+  const [pw,     setPw]     = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [busy,   setBusy]   = useState(false);
+  const [error,  setError]  = useState("");
+  const [forgot, setForgot] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  useEffect(() => { if (isLoggedIn) router.push("/"); }, [isLoggedIn, router]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !pw) return;
+    setBusy(true); setError("");
     try {
-      await signIn(email.trim().toLowerCase(), password);
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: pw,
+      });
+      if (authError) {
+        if (authError.message.includes("Invalid login")) throw new Error("Incorrect email or password.");
+        if (authError.message.includes("Email not confirmed")) throw new Error("Please verify your email first. Check your inbox.");
+        throw authError;
+      }
+      /* Session persists automatically — Supabase stores it in localStorage */
       router.push("/");
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message.includes("Invalid login")
-            ? "Wrong email or password. Please try again."
-            : err.message
-          : "Login failed. Please try again."
-      );
+    } catch (err: any) {
+      setError(err.message || "Sign in failed.");
     } finally {
       setBusy(false);
     }
   };
 
-  if (loading) return null; // wait for session check
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) { setError("Enter your email first."); return; }
+    setBusy(true); setError("");
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (resetError) throw resetError;
+      setResetSent(true);
+    } catch (err: any) {
+      setError(err.message || "Failed to send reset email.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inp: React.CSSProperties = {
+    width:"100%", padding:"13px 14px", background:"#FAFAFA",
+    border:`1.5px solid ${BORDER}`, borderRadius:12,
+    fontSize:14, color:DARK, outline:"none", boxSizing:"border-box",
+  };
+
+  if (resetSent) {
+    return (
+      <div style={{ minHeight:"100vh", background:BG, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:28 }}>
+        <div style={{ maxWidth:340, width:"100%", textAlign:"center" }}>
+          <div style={{ width:80, height:80, borderRadius:"50%", background:"#D1FAE5", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <h2 style={{ fontSize:22, fontWeight:800, color:DARK, marginBottom:10 }}>Check your email</h2>
+          <p style={{ fontSize:14, color:MUTED, lineHeight:1.7, marginBottom:28 }}>
+            A password reset link has been sent to <strong style={{ color:DARK }}>{email}</strong>.
+          </p>
+          <button onClick={() => { setForgot(false); setResetSent(false); }} style={{ width:"100%", background:P, color:"#fff", border:"none", borderRadius:14, padding:"14px 0", fontSize:15, fontWeight:700, cursor:"pointer" }}>
+            Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight:"100vh", background:BG, display:"flex", flexDirection:"column" }}>
       {/* Header */}
-      <div style={{ height: 60, background: C.white, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Logo />
+      <div style={{ background:"#fff", padding:"16px 20px", borderBottom:`0.5px solid ${BORDER}`, display:"flex", alignItems:"center", gap:12 }}>
+        <button onClick={() => router.back()} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={DARK} strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div style={{ fontSize:16, fontWeight:700, color:DARK }}>{forgot ? "Reset password" : "Sign in"}</div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 20px 80px" }}>
-        <div style={{ width: "100%", maxWidth: 380, background: C.white, borderRadius: 20, padding: "32px 24px", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
+      <div style={{ flex:1, padding:"32px 20px 40px", maxWidth:440, width:"100%", margin:"0 auto", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:32 }}>
+          <div style={{ fontSize:30, fontWeight:900 }}><span style={{ color:P }}>mai</span><span style={{ color:DARK }}>zu</span></div>
+          <div style={{ fontSize:12, color:MUTED, marginTop:2 }}>
+            {forgot ? "We'll send you a reset link" : "Welcome back"}
+          </div>
+        </div>
 
-          {/* Icon + title */}
-          <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <div style={{ width: 64, height: 64, background: C.softOrange, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, margin: "0 auto 14px" }}>🏪</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: C.dark, marginBottom: 5 }}>Welcome Back</div>
-            <div style={{ fontSize: 13, color: C.gray }}>Sign in to your Maizu account</div>
+        {error && (
+          <div style={{ background:"#FEE2E2", border:"1px solid #FCA5A5", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#991B1B" }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={forgot ? handleForgot : handleLogin} style={{ display:"flex", flexDirection:"column", gap:16 }}>
+          {/* Email */}
+          <div>
+            <label style={{ fontSize:12, fontWeight:600, color:DARK, display:"block", marginBottom:6 }}>Email address</label>
+            <input value={email} onChange={e => setEmail(e.target.value)}
+              type="email" placeholder="your@email.com" autoComplete="email" style={inp} />
           </div>
 
-          {/* Error banner */}
-          {error && (
-            <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#991B1B" }}>
-              {error}
+          {/* Password (sign in only) */}
+          {!forgot && (
+            <div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                <label style={{ fontSize:12, fontWeight:600, color:DARK }}>Password</label>
+                <button type="button" onClick={() => setForgot(true)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:12, color:P, fontWeight:500 }}>
+                  Forgot password?
+                </button>
+              </div>
+              <div style={{ position:"relative", display:"flex", alignItems:"center" }}>
+                <input value={pw} onChange={e => setPw(e.target.value)}
+                  type={showPw?"text":"password"} placeholder="Your password" autoComplete="current-password"
+                  style={{ ...inp, paddingRight:44 }} />
+                <div style={{ position:"absolute", right:10 }}><Eye show={showPw} toggle={() => setShowPw(s=>!s)} /></div>
+              </div>
             </div>
           )}
 
-          {/* Email */}
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 6 }}>Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleLogin()}
-              placeholder="you@example.com"
-              autoComplete="email"
-              style={{ width: "100%", padding: "12px 14px", border: `1.5px solid ${C.border}`, borderRadius: 12, fontSize: 14, outline: "none", color: C.dark, boxSizing: "border-box", background: "#FAFAFA" }}
-            />
-          </div>
-
-          {/* Password */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 6 }}>Password</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type={showPass ? "text" : "password"}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleLogin()}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                style={{ width: "100%", padding: "12px 44px 12px 14px", border: `1.5px solid ${C.border}`, borderRadius: 12, fontSize: 14, outline: "none", color: C.dark, boxSizing: "border-box", background: "#FAFAFA" }}
-              />
-              <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.gray }}>
-                {showPass ? "🙈" : "👁️"}
-              </button>
-            </div>
-            <div style={{ textAlign: "right", marginTop: 6 }}>
-              <span style={{ fontSize: 12, color: C.primary, cursor: "pointer", fontWeight: 600 }}>Forgot password?</span>
-            </div>
-          </div>
-
-          {/* Submit */}
-          <button
-            onClick={handleLogin}
-            disabled={busy}
-            style={{ width: "100%", background: busy ? C.grayLight : C.primary, color: "#fff", border: "none", borderRadius: 14, padding: "14px 0", fontSize: 15, fontWeight: 700, cursor: busy ? "default" : "pointer", marginBottom: 16, transition: "background 0.2s" }}
-          >
-            {busy ? "Signing in…" : "Sign In"}
+          <button type="submit" disabled={busy || !email.trim() || (!forgot && !pw)}
+            style={{ background:busy||!email.trim()||(!forgot&&!pw)?"#D1D5DB":P, color:"#fff", border:"none", borderRadius:14, padding:"15px 0", fontSize:15, fontWeight:700, cursor:"pointer", marginTop:4 }}>
+            {busy ? (forgot ? "Sending…" : "Signing in…") : (forgot ? "Send reset link" : "Sign in")}
           </button>
+        </form>
 
-          {/* Divider */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <div style={{ flex: 1, height: 1, background: C.border }} />
-            <span style={{ fontSize: 12, color: C.grayLight }}>or</span>
-            <div style={{ flex: 1, height: 1, background: C.border }} />
-          </div>
+        {forgot && (
+          <button onClick={() => { setForgot(false); setError(""); }} style={{ background:"none", border:"none", color:MUTED, fontSize:13, cursor:"pointer", marginTop:14, textAlign:"center" }}>
+            Back to sign in
+          </button>
+        )}
 
-          <div style={{ textAlign: "center" }}>
-            <span style={{ fontSize: 13, color: C.gray }}>Don&apos;t have an account? </span>
-            <span onClick={() => router.push("/register")} style={{ fontSize: 13, color: C.primary, fontWeight: 700, cursor: "pointer" }}>
-              Sign Up Free
-            </span>
+        {!forgot && (
+          <div style={{ textAlign:"center", marginTop:24, fontSize:13, color:MUTED }}>
+            Don&apos;t have an account?{" "}
+            <button onClick={() => router.push("/register")} style={{ background:"none", border:"none", color:P, fontWeight:700, cursor:"pointer", fontSize:13 }}>
+              Create one free
+            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
