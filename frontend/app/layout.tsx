@@ -4,7 +4,7 @@ import { AuthProvider }     from "@/context/AuthContext";
 import { CartProvider }     from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
-import PushNotifications    from "@/components/ui/PushNotifications";
+
 
 export const metadata: Metadata = {
   title:       "Maizu Business Hub",
@@ -157,7 +157,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <CartProvider>
             <WishlistProvider>
               <ServiceWorkerRegistration />
-              <PushNotifications />
+              
               {children}
             </WishlistProvider>
           </CartProvider>
