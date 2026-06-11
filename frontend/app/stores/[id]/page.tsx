@@ -1,131 +1,174 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { C } from "@/utils/constants";
-import { storesApi, productsApi, type Store, type Product } from "@/utils/api";
 import { useAuth } from "@/context/AuthContext";
-import { useCart } from "@/context/CartContext";
-import BottomNav from "@/components/navigation/BottomNav";
-import ReviewSection, { StarDisplay } from "@/components/reviews/ReviewSection";
-import ShareSheet, { WhatsAppButton } from "@/components/ui/ShareSheet";
-import HeartButton from "@/components/ui/HeartButton";
-
-const SITE = "https://maizu.vercel.app";
-
-/* ── Toast ──────────────────────────────────────────────────── */
-const Toast = ({ message, onClose }: { message: string; onClose: () => void }) => {
-  useEffect(() => { const t = setTimeout(onClose, 2500); return () => clearTimeout(t); }, [onClose]);
-  return (
-    <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", background: C.dark, color: "#fff", borderRadius: 22, padding: "10px 20px", fontSize: 13, fontWeight: 500, zIndex: 500, whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
-      {message}
-    </div>
-  );
-};
+import { storesApi, productsApi, type Store, type Product } from "@/utils/api";
+import Header from "@/components/layout/Header";
 
 /* ── Product card ───────────────────────────────────────────── */
-const ProductCard = ({
-  product, store, onAddToCart, onShare,
-}: {
-  product:     Product;
-  store:       Store;
-  onAddToCart: (p: Product) => void;
-  onShare:     (p: Product) => void;
-}) => {
-  const { isInCart, getQty } = useCart();
-  const inCart = isInCart(product.id);
-  const qty    = getQty(product.id);
+const ProductCard = ({ product, onDelete }: { product: Product; onDelete: (id: string) => void }) => (
+  <div style={{ background: C.white, borderRadius: 14, overflow: "hidden", border: `1px solid ${C.border}`, position: "relative" }}>
+    <div style={{ height: 100, background: "#F3F4F6", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>
+      {product.image_urls?.[0]
+        ? <img src={product.image_urls[0]} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        : "📦"
+      }
+    </div>
+    <div style={{ padding: "10px 10px 12px" }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.dark, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{product.name}</div>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.primary, marginBottom: 4 }}>R{product.price}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.gray }}>
+        <span>Stock: {product.stock_quantity}</span>
+        <span>👁 {product.view_count}</span>
+      </div>
+      <button
+        onClick={() => onDelete(product.id)}
+        style={{ marginTop: 8, width: "100%", background: "#FEE2E2", color: "#991B1B", border: "none", borderRadius: 8, padding: "5px 0", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+      >
+        Remove
+      </button>
+    </div>
+  </div>
+);
+
+/* ── Add product modal ──────────────────────────────────────── */
+const AddProductModal = ({ storeId, onClose, onAdded }: { storeId: string; onClose: () => void; onAdded: () => void }) => {
+  const [form, setForm] = useState({
+    name: "", description: "", price: "", category: "", stock_quantity: "1",
+  });
+  const [images, setImages]   = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [busy,  setBusy]  = useState(false);
+  const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const set = (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  const handleImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).slice(0, 5);
+    setImages(files);
+    setPreviews(files.map(f => URL.createObjectURL(f)));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.price) { setError("Name and price are required."); return; }
+    setBusy(true); setError("");
+    try {
+      const fd = new FormData();
+      fd.append("store_id",       storeId);
+      fd.append("name",           form.name.trim());
+      fd.append("description",    form.description);
+      fd.append("price",          form.price);
+      fd.append("category",       form.category);
+      fd.append("stock_quantity", form.stock_quantity);
+      images.forEach(img => fd.append("images", img));
+      await productsApi.create(fd);
+      onAdded();
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to add product.");
+      setBusy(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "11px 13px",
+    border: `1.5px solid ${C.border}`, borderRadius: 11,
+    fontSize: 14, outline: "none", color: C.dark,
+    boxSizing: "border-box", background: "#FAFAFA",
+  };
 
   return (
-    <div style={{ background: C.white, borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.07)" }}>
-      {/* Image */}
-      <div style={{ height: 130, background: "#F3F4F6", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, position: "relative" }}>
-        {product.image_urls?.[0]
-          ? <img src={product.image_urls[0]} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : "📦"
-        }
-        {product.is_trending && (
-          <div style={{ position: "absolute", top: 6, left: 6, background: "#FF6B35", color: "#fff", borderRadius: 8, padding: "2px 7px", fontSize: 8, fontWeight: 700 }}>🔥</div>
-        )}
-        {inCart && (
-          <div style={{ position: "absolute", top: 6, right: 6, background: C.primary, color: "#fff", borderRadius: 20, padding: "2px 8px", fontSize: 8, fontWeight: 700 }}>{qty} in cart</div>
-        )}
-        {product.stock_quantity === 0 && (
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, background: "rgba(0,0,0,0.6)", padding: "3px 10px", borderRadius: 20 }}>Out of Stock</span>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "flex-end" }}>
+      <div style={{ background: C.white, borderRadius: "20px 20px 0 0", padding: "20px 16px 40px", width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.dark }}>Add Product</div>
+          <button onClick={onClose} style={{ background: "#F3F4F6", border: "none", borderRadius: "50%", width: 32, height: 32, fontSize: 16, cursor: "pointer", color: C.dark }}>✕</button>
+        </div>
+
+        {error && <div style={{ background: "#FEE2E2", borderRadius: 10, padding: "10px 13px", marginBottom: 14, fontSize: 13, color: "#991B1B" }}>{error}</div>}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 5 }}>Product Name *</label>
+            <input value={form.name} onChange={set("name")} placeholder="e.g. Ankara Wrap Dress" style={inputStyle} />
           </div>
-        )}
-        {/* Heart + Share buttons */}
-        <div style={{ position: "absolute", bottom: 6, left: 6, right: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <HeartButton productId={product.id} size="sm" />
-          <button
-            onClick={e => { e.stopPropagation(); onShare(product); }}
-            style={{ background: "rgba(0,0,0,0.45)", border: "none", borderRadius: 20, padding: "3px 8px", color: "#fff", fontSize: 10, cursor: "pointer" }}
-          >
-            ↗
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 5 }}>Price (R) *</label>
+              <input value={form.price} onChange={set("price")} type="number" placeholder="0.00" min="0" step="0.01" style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 5 }}>Stock Qty</label>
+              <input value={form.stock_quantity} onChange={set("stock_quantity")} type="number" placeholder="1" min="0" style={inputStyle} />
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 5 }}>Category</label>
+            <select value={form.category} onChange={set("category")} style={inputStyle}>
+              <option value="">Select…</option>
+              {["Fashion", "Electronics", "Beauty", "Food", "Home", "Sports", "Art & Crafts", "Other"].map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 5 }}>Description</label>
+            <textarea value={form.description} onChange={set("description") as React.ChangeEventHandler<HTMLTextAreaElement>} placeholder="Describe your product…" rows={3} style={{ ...inputStyle, resize: "none", lineHeight: 1.5 }} />
+          </div>
+
+          {/* Image upload */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: C.dark, display: "block", marginBottom: 5 }}>Product Images (max 5)</label>
+            <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImages} style={{ display: "none" }} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {previews.map((p, i) => (
+                <div key={i} style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden" }}>
+                  <img src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+              ))}
+              {previews.length < 5 && (
+                <div onClick={() => fileRef.current?.click()} style={{ width: 64, height: 64, borderRadius: 10, border: `2px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 22, color: C.grayLight, background: "#FAFAFA" }}>
+                  +
+                </div>
+              )}
+            </div>
+          </div>
+
+          <button onClick={handleSubmit} disabled={busy} style={{ background: busy ? C.grayLight : C.primary, color: "#fff", border: "none", borderRadius: 14, padding: "14px 0", fontSize: 15, fontWeight: 700, cursor: busy ? "default" : "pointer", marginTop: 6 }}>
+            {busy ? "Adding product…" : "Add Product"}
           </button>
         </div>
       </div>
-
-      {/* Info */}
-      <div style={{ padding: "10px 10px 12px" }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: C.dark, marginBottom: 4, lineHeight: 1.3 }}>{product.name}</div>
-        <div style={{ fontSize: 15, fontWeight: 800, color: C.primary, marginBottom: 6 }}>
-          R{Number(product.price).toFixed(2)}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={{ fontSize: 9, color: C.gray }}>Stock: {product.stock_quantity}</span>
-          <span style={{ fontSize: 9, color: C.gray }}>👁 {product.view_count}</span>
-        </div>
-        <button
-          onClick={() => onAddToCart(product)}
-          disabled={product.stock_quantity === 0}
-          style={{
-            width: "100%",
-            background: product.stock_quantity === 0 ? "#F3F4F6" : inCart ? "#E1F5EE" : C.primary,
-            color: product.stock_quantity === 0 ? C.gray : inCart ? "#085041" : "#fff",
-            border: "none", borderRadius: 10, padding: "8px 0",
-            fontSize: 11, fontWeight: 700,
-            cursor: product.stock_quantity === 0 ? "default" : "pointer",
-          }}
-        >
-          {product.stock_quantity === 0 ? "Out of Stock" : inCart ? `✓ In Cart (${qty})` : "Add to Cart"}
-        </button>
-      </div>
     </div>
   );
 };
 
-/* ── Skeleton ───────────────────────────────────────────────── */
-const Skel = ({ h = 12, w = "100%", r = 4 }: { h?: number; w?: string | number; r?: number }) => (
-  <div style={{ height: h, width: w, borderRadius: r, background: "#F0F0F0", animation: "pulse 1.5s ease-in-out infinite" }} />
-);
-
 /* ══════════════════════════════════════════════════════════════
-   STORE PAGE
+   STORE MANAGEMENT PAGE
 ══════════════════════════════════════════════════════════════ */
-export default function StoreDetailPage() {
-  const router  = useRouter();
-  const params  = useParams();
-  const storeId = params.id as string;
+export default function StoreManagePage() {
+  const router   = useRouter();
+  const params   = useParams();
+  const storeId  = params.id as string;
+  const { isLoggedIn, loading } = useAuth();
 
-  const { authUser }            = useAuth();
-  const { addItem, totalItems } = useCart();
+  const [store,       setStore]       = useState<Store | null>(null);
+  const [products,    setProducts]    = useState<Product[]>([]);
+  const [activeTab,   setActiveTab]   = useState<"products" | "orders" | "settings">("products");
+  const [showModal,   setShowModal]   = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [error,       setError]       = useState("");
 
-  const [store,      setStore]      = useState<Store | null>(null);
-  const [products,   setProducts]   = useState<Product[]>([]);
-  const [following,  setFollowing]  = useState(false);
-  const [followBusy, setFollowBusy] = useState(false);
-  const [activeTab,  setActiveTab]  = useState<"products" | "reviews">("products");
-  const [searchQ,    setSearchQ]    = useState("");
-  const [catFilter,  setCatFilter]  = useState("all");
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState("");
-  const [toast,      setToast]      = useState("");
-  const [shareOpen,  setShareOpen]  = useState(false);
-  const [shareProduct, setShareProduct] = useState<Product | null>(null);
+  useEffect(() => {
+    if (!loading && !isLoggedIn) router.push("/login");
+  }, [loading, isLoggedIn, router]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const loadData = async () => {
+    setPageLoading(true);
     try {
       const [storeData, productsData] = await Promise.all([
         storesApi.getOne(storeId),
@@ -136,186 +179,176 @@ export default function StoreDetailPage() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load store.");
     } finally {
-      setLoading(false);
+      setPageLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (storeId) loadData();
   }, [storeId]);
 
-  useEffect(() => { if (storeId) load(); }, [load, storeId]);
-
-  const handleFollow = async () => {
-    if (!authUser) { router.push("/login"); return; }
-    setFollowBusy(true);
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm("Remove this product?")) return;
     try {
-      const isNowFollowing = await storesApi.follow(storeId);
-      setFollowing(isNowFollowing);
-      setStore(prev => prev ? { ...prev, follower_count: isNowFollowing ? prev.follower_count + 1 : prev.follower_count - 1 } : prev);
-    } catch { /* silent */ }
-    finally { setFollowBusy(false); }
+      await productsApi.delete(productId);
+      setProducts(prev => prev.filter(p => p.id !== productId));
+    } catch (err) {
+      alert("Failed to delete product.");
+    }
   };
 
-  const handleAddToCart = (product: Product) => {
-    if (!store) return;
-    addItem({
-      product_id: product.id, name: product.name,
-      price: Number(product.price), image_url: product.image_urls?.[0],
-      store_id: storeId, store_name: store.name, stock_quantity: product.stock_quantity,
-    });
-    setToast(`${product.name} added! 🛒`);
-  };
-
-  const handleShareProduct = (product: Product) => {
-    setShareProduct(product);
-    setShareOpen(true);
-  };
-
-  const shareUrl     = `${SITE}/stores/${storeId}`;
-  const shareTitle   = shareProduct ? `${shareProduct.name} — ${store?.name}` : store?.name || "";
-  const shareMessage = shareProduct
-    ? `🛍️ Check out *${shareProduct.name}* on Maizu Mall!\n💰 Only R${Number(shareProduct.price).toFixed(2)}\n🏪 From *${store?.name}*\n\nShop now 👇`
-    : `🏪 Check out *${store?.name}* on Maizu!\n\n${store?.product_count} products available 👇`;
-
-  const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
-  const filtered   = products.filter(p => {
-    const matchCat = catFilter === "all" || p.category === catFilter;
-    const matchQ   = !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase());
-    return matchCat && matchQ;
-  });
-
-  if (loading) {
+  if (loading || pageLoading) {
     return (
-      <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 90 }}>
-        <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
-        <div style={{ height: 200, background: "#E5E7EB", animation: "pulse 1.5s ease-in-out infinite" }} />
-        <div style={{ padding: "0 16px", marginTop: -30 }}>
-          <Skel h={72} w={72} r={16} />
-          <div style={{ marginTop: 12 }}><Skel h={20} w="50%" /></div>
-        </div>
-        <BottomNav />
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg }}>
+        <div style={{ fontSize: 13, color: C.gray }}>Loading store…</div>
       </div>
     );
   }
 
   if (error || !store) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, gap: 16, padding: 20 }}>
-        <div style={{ fontSize: 48 }}>⚠️</div>
-        <div style={{ fontSize: 16, fontWeight: 600, color: C.dark }}>{error || "Store not found"}</div>
-        <button onClick={() => router.push("/stores")} style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 22, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Browse Stores</button>
-        <BottomNav />
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: 20 }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 36, marginBottom: 10 }}>⚠️</div>
+          <div style={{ fontSize: 14, color: C.dark, marginBottom: 16 }}>{error || "Store not found."}</div>
+          <button onClick={() => router.push("/dashboard")} style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 22, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            Back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 90 }}>
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
-      {toast && <Toast message={toast} onClose={() => setToast("")} />}
-      {shareOpen && <ShareSheet url={shareUrl} title={shareTitle} message={shareMessage} onClose={() => setShareOpen(false)} />}
+    <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 40 }}>
+      <Header />
 
-      {/* Banner */}
-      <div style={{ height: 200, background: store.banner_url ? "transparent" : `linear-gradient(135deg,${C.primary}40,#FF8C6140)`, overflow: "hidden", position: "relative" }}>
-        {store.banner_url ? <img src={store.banner_url} alt="banner" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60 }}>🏪</div>}
-        <button onClick={() => router.back()} style={{ position: "absolute", top: 12, left: 12, background: "rgba(0,0,0,0.4)", border: "none", borderRadius: 22, padding: "6px 14px", color: "#fff", fontSize: 13, cursor: "pointer" }}>‹ Back</button>
-        <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 8 }}>
-          <button onClick={() => { setShareProduct(null); setShareOpen(true); }} style={{ background: "rgba(0,0,0,0.4)", border: "none", borderRadius: 22, padding: "6px 14px", color: "#fff", fontSize: 13, cursor: "pointer" }}>↗ Share</button>
-          <button onClick={() => router.push("/cart")} style={{ background: "rgba(0,0,0,0.4)", border: "none", borderRadius: 22, padding: "6px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-            🛒 {totalItems > 0 && <span style={{ background: C.primary, borderRadius: "50%", width: 16, height: 16, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>{totalItems}</span>}
+      {/* Store header */}
+      <div style={{ background: C.white, borderBottom: `1px solid ${C.border}` }}>
+        {/* Banner */}
+        <div style={{ height: 110, background: store.banner_url ? "transparent" : `linear-gradient(135deg, ${C.primary}30, ${C.primary}50)`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+          {store.banner_url
+            ? <img src={store.banner_url} alt="banner" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : <div style={{ fontSize: 48 }}>🏪</div>
+          }
+          <button onClick={() => router.push("/dashboard")} style={{ position: "absolute", top: 10, left: 10, background: "rgba(0,0,0,0.4)", border: "none", borderRadius: 22, padding: "5px 12px", color: "#fff", fontSize: 13, cursor: "pointer", backdropFilter: "blur(4px)" }}>
+            ‹ Dashboard
           </button>
         </div>
-      </div>
 
-      {/* Store info */}
-      <div style={{ background: C.white, padding: "0 16px 16px", marginBottom: 10 }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: -28 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 16, background: store.logo_url ? "transparent" : C.softOrange, border: `4px solid ${C.white}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0 }}>
+        {/* Store info */}
+        <div style={{ padding: "0 16px 16px", display: "flex", alignItems: "flex-end", gap: 12, marginTop: -26 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 12, background: store.logo_url ? "transparent" : C.softOrange, border: `3px solid ${C.white}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>
             {store.logo_url ? <img src={store.logo_url} alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🏪"}
           </div>
-          <button onClick={handleFollow} disabled={followBusy} style={{ background: following ? C.white : C.primary, color: following ? C.primary : "#fff", border: `2px solid ${C.primary}`, borderRadius: 22, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: followBusy ? "default" : "pointer" }}>
-            {followBusy ? "…" : following ? "✓ Following" : "+ Follow"}
-          </button>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: C.dark, marginBottom: 3 }}>{store.name}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <StarDisplay rating={Number(store.rating)} size={12} />
-            <span style={{ fontSize: 12, color: C.gray }}>{Number(store.rating).toFixed(1)} ({store.total_reviews} reviews)</span>
+          <div style={{ flex: 1, paddingBottom: 2 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.dark }}>{store.name}</div>
+            <div style={{ fontSize: 11, color: C.gray }}>{store.category} · {store.follower_count} followers</div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-            <span style={{ background: C.softOrange, color: C.primary, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{store.category}</span>
-            {store.floor_location && <span style={{ background: "#F3F4F6", color: C.gray, borderRadius: 20, padding: "3px 10px", fontSize: 11 }}>📍 {store.floor_location}</span>}
+          <div style={{ background: store.is_active ? "#E1F5EE" : "#F3F4F6", color: store.is_active ? "#085041" : C.gray, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>
+            {store.is_active ? "Active" : "Inactive"}
           </div>
-          {store.description && <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.65, marginBottom: 12 }}>{store.description}</div>}
         </div>
 
-        {/* WhatsApp share bar */}
-        <div style={{ background: C.softOrange, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.dark, marginBottom: 2 }}>Share this store</div>
-            <div style={{ fontSize: 11, color: C.gray }}>Send to contacts on WhatsApp</div>
-          </div>
-          <WhatsAppButton url={`/stores/${storeId}`} message={shareMessage} style={{ flexShrink: 0, fontSize: 12 }} />
-        </div>
-
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", background: "#F9FAFB", borderRadius: 14, overflow: "hidden" }}>
-          {[["📦", store.product_count, "Products"], ["👥", store.follower_count, "Followers"], ["⭐", Number(store.rating).toFixed(1), "Rating"]].map(([e, v, l]) => (
-            <div key={l as string} style={{ padding: "12px 0", textAlign: "center", borderRight: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 13, marginBottom: 2 }}>{e}</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: C.dark }}>{v}</div>
-              <div style={{ fontSize: 10, color: C.gray }}>{l}</div>
+        {/* Stats row */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderTop: `1px solid ${C.border}` }}>
+          {[["📦", store.product_count, "Products"], ["👥", store.follower_count, "Followers"], ["⭐", store.rating?.toFixed(1) || "—", "Rating"]].map(([emoji, val, label]) => (
+            <div key={label as string} style={{ padding: "12px 0", textAlign: "center", borderRight: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 14, marginBottom: 2 }}>{emoji}</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: C.dark }}>{val}</div>
+              <div style={{ fontSize: 10, color: C.gray }}>{label}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ background: C.white, display: "flex", borderBottom: `1px solid ${C.border}`, marginBottom: 10, position: "sticky", top: 0, zIndex: 50 }}>
-        {([{ id: "products", label: `📦 Products (${products.length})` }, { id: "reviews", label: `⭐ Reviews (${store.total_reviews})` }] as const).map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            style={{ flex: 1, background: "none", border: "none", padding: "13px 0", fontSize: 13, fontWeight: activeTab === tab.id ? 700 : 500, color: activeTab === tab.id ? C.primary : C.gray, cursor: "pointer", borderBottom: activeTab === tab.id ? `2.5px solid ${C.primary}` : "2.5px solid transparent" }}>
-            {tab.label}
+      <div style={{ background: C.white, display: "flex", borderBottom: `1px solid ${C.border}` }}>
+        {(["products", "orders", "settings"] as const).map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, background: "none", border: "none", padding: "12px 0", fontSize: 12, fontWeight: activeTab === tab ? 700 : 500, color: activeTab === tab ? C.primary : C.gray, cursor: "pointer", borderBottom: activeTab === tab ? `2.5px solid ${C.primary}` : "2.5px solid transparent", textTransform: "capitalize" }}>
+            {tab === "products" ? "📦 Products" : tab === "orders" ? "📋 Orders" : "⚙️ Settings"}
           </button>
         ))}
       </div>
 
-      {/* Products tab */}
-      {activeTab === "products" && (
-        <div style={{ padding: "0 16px" }}>
-          <div style={{ position: "relative", marginBottom: 12 }}>
-            <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: C.grayLight }}>🔍</div>
-            <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder={`Search ${store.name} products…`}
-              style={{ width: "100%", padding: "11px 12px 11px 36px", border: `1px solid ${C.border}`, borderRadius: 11, fontSize: 13, outline: "none", background: C.white, color: C.dark, boxSizing: "border-box" }} />
-          </div>
-          {categories.length > 0 && (
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12 }}>
-              {["all", ...categories].map(cat => (
-               <button key={cat} onClick={() => setCatFilter(cat ?? "all")}
-                  style={{ background: catFilter === cat ? C.primary : C.white, color: catFilter === cat ? "#fff" : C.dark, border: catFilter === cat ? "none" : `1.5px solid ${C.border}`, borderRadius: 22, padding: "6px 14px", fontSize: 12, fontWeight: catFilter === cat ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-                  {cat === "all" ? "All" : cat}
+      <div style={{ padding: "16px" }}>
+
+        {/* ── Products tab ── */}
+        {activeTab === "products" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.dark }}>
+                Products ({products.length})
+              </div>
+              <button onClick={() => setShowModal(true)} style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 22, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                + Add Product
+              </button>
+            </div>
+
+            {products.length === 0 ? (
+              <div style={{ background: C.white, borderRadius: 16, padding: "36px 20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.dark, marginBottom: 6 }}>No products yet</div>
+                <div style={{ fontSize: 12, color: C.gray, marginBottom: 16 }}>Add your first product to start selling</div>
+                <button onClick={() => setShowModal(true)} style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 22, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                  Add First Product
                 </button>
-              ))}
-            </div>
-          )}
-          <div style={{ fontSize: 13, color: C.gray, marginBottom: 12 }}>{filtered.length} product{filtered.length !== 1 ? "s" : ""}</div>
-          {filtered.length === 0 ? (
-            <div style={{ background: C.white, borderRadius: 16, padding: "36px 20px", textAlign: "center" }}>
-              <div style={{ fontSize: 36, marginBottom: 10 }}>📦</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.dark }}>{searchQ ? "No products match" : "No products yet"}</div>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-              {filtered.map(p => (
-                <ProductCard key={p.id} product={p} store={store} onAddToCart={handleAddToCart} onShare={handleShareProduct} />
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                {products.map(p => (
+                  <ProductCard key={p.id} product={p} onDelete={handleDeleteProduct} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Orders tab ── */}
+        {activeTab === "orders" && (
+          <div style={{ background: C.white, borderRadius: 16, padding: "28px 20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.dark, marginBottom: 6 }}>No orders yet</div>
+            <div style={{ fontSize: 12, color: C.gray }}>Orders will appear here when customers buy from your store</div>
+          </div>
+        )}
+
+        {/* ── Settings tab ── */}
+        {activeTab === "settings" && (
+          <div style={{ background: C.white, borderRadius: 16, padding: "20px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 16 }}>Store Settings</div>
+
+            {[
+              { label: "Store Name",     val: store.name },
+              { label: "Category",       val: store.category },
+              { label: "Floor Location", val: store.floor_location || "Not set" },
+              { label: "Description",    val: store.description || "Not set" },
+            ].map(item => (
+              <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}`, fontSize: 13 }}>
+                <span style={{ color: C.gray }}>{item.label}</span>
+                <span style={{ color: C.dark, fontWeight: 500, maxWidth: "55%", textAlign: "right" }}>{item.val}</span>
+              </div>
+            ))}
+
+            <button style={{ marginTop: 20, width: "100%", background: C.primary, color: "#fff", border: "none", borderRadius: 14, padding: "13px 0", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              Edit Store Details
+            </button>
+
+            <button style={{ marginTop: 10, width: "100%", background: "#FEE2E2", color: "#991B1B", border: "none", borderRadius: 14, padding: "13px 0", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              Delete Store
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Add product modal */}
+      {showModal && (
+        <AddProductModal
+          storeId={storeId}
+          onClose={() => setShowModal(false)}
+          onAdded={loadData}
+        />
       )}
-
-      {/* Reviews tab */}
-      {activeTab === "reviews" && <ReviewSection storeId={storeId} storeName={store.name} />}
-
-      <BottomNav />
     </div>
   );
 }
