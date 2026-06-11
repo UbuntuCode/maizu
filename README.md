@@ -1,295 +1,73 @@
-maizu
-MAIZU – African multi-vendor fashion marketplace connecting creators and buyers across the continent.
-MAIZU
+# Maizu Vendor Fix Package
 
-MAIZU is an African multi-vendor fashion marketplace that connects creators and buyers across the continent.
+## 1. Copy these files into your project
 
-Tech Stack
-Frontend: Next.js
-Backend: Node.js
-Database: PostgreSQL
+| File in this zip | Goes to (replace if it exists) |
+|---|---|
+| `frontend/components/layout/Logo.tsx` | `frontend/components/layout/Logo.tsx` (new) |
+| `frontend/components/layout/DesktopSidebar.tsx` | `frontend/components/layout/DesktopSidebar.tsx` (replace) |
+| `frontend/app/dashboard/page.tsx` | `frontend/app/dashboard/page.tsx` (replace) |
+| `frontend/app/dashboard/create-product/page.tsx` | `frontend/app/dashboard/create-product/page.tsx` (new folder) |
+| `frontend/app/dashboard/orders/page.tsx` | `frontend/app/dashboard/orders/page.tsx` (replace or new) |
+| `frontend/app/dashboard/open-store/page.tsx` | `frontend/app/dashboard/open-store/page.tsx` (new folder) |
 
-Core Features
-- Vendor registration
-- Product catalog
-- Shopping cart
-- Secure payments
+## 2. Delete the old useless pages
 
+In PowerShell, from your project root:
 
-# MAIZU Project Development Plan
-
-## Overview
-
-MAIZU is an African multi-vendor fashion marketplace that allows creators, designers, and brands to sell products across the continent.
-
-The goal of the first version (MVP) is to build a functional marketplace where:
-
-* Users can create accounts
-* Vendors can open stores
-* Vendors can upload products
-* Customers can browse and buy products
-
----
-
-# Project Architecture
-
-## Technology Stack
-
-### Frontend
-
-Framework: Next.js
-Purpose: Build the website interface for users and vendors.
-
-Responsibilities:
-
-* Product browsing
-* Vendor store pages
-* Shopping cart
-* Checkout interface
-* Authentication UI
-
----
-
-### Backend API
-
-Framework: Node.js with Express
-
-Responsibilities:
-
-* Authentication
-* Vendor management
-* Product management
-* Order management
-* Payment processing
-
----
-
-### Database
-
-Database: PostgreSQL
-
-Purpose:
-Store all platform data such as:
-
-* users
-* vendors
-* products
-* orders
-* payments
-
----
-
-### Media Storage
-
-Service: Cloudinary
-
-Purpose:
-Store product images and fashion media.
-
----
-
-# Repository Structure
-
-```
-maizu
-│
-├── frontend
-│   ├── components
-│   ├── pages
-│   ├── layouts
-│   ├── services
-│   └── utils
-│
-├── backend
-│   ├── controllers
-│   ├── routes
-│   ├── models
-│   ├── middleware
-│   ├── services
-│   └── config
-│
-├── database
-│   ├── schema
-│   ├── migrations
-│   └── seeds
-│
-├── docs
-│   ├── architecture.md
-│   └── api-spec.md
-│
-├── design
-│   ├── ui
-│   └── brand
-│
-└── README.md
+```powershell
+# Old "Discover Products" desktop page — delete whichever of these exist:
+Remove-Item -Recurse -Force frontend\app\discover -ErrorAction SilentlyContinue
 ```
 
----
+(Keep `frontend/app/discovery` — that's the real video Discover feed.)
 
-# Core Systems
+## 3. One-time Cloudinary setup (2 minutes, needed for product photos)
 
-## 1. Authentication System
+1. Log into cloudinary.com (cloud: ddjf6z9dv)
+2. Settings → Upload → Upload presets → **Add upload preset**
+3. Signing mode: **Unsigned**, name it exactly: `maizu_unsigned`
+4. Save.
 
-Users must be able to:
+If you already have an unsigned preset with a different name, open
+`frontend/app/dashboard/create-product/page.tsx` and change the
+`UPLOAD_PRESET` constant at the top.
 
-* Register
-* Login
-* Reset password
+## 4. If updating order status fails with a permissions error
 
-User roles:
+That means Supabase Row Level Security is blocking vendors from updating
+orders. Run this once in Supabase → SQL Editor:
 
-* Customer
-* Vendor
-* Admin
-
----
-
-## 2. Vendor System
-
-Vendors can:
-
-* Create stores
-* Upload products
-* Manage inventory
-* Track orders
-
-Example vendor data:
-
-```
-Vendor
-- id
-- store_name
-- owner_id
-- products
-- orders
+```sql
+create policy "Vendors update orders for their stores"
+on orders for update
+using (
+  exists (
+    select 1 from order_items oi
+    join stores s on s.id = oi.store_id
+    where oi.order_id = orders.id
+      and s.owner_id = auth.uid()
+  )
+);
 ```
 
----
+## 5. The old dark-blue app with emojis (your first 3 screenshots)
 
-## 3. Product Catalog
+That window is an OLD cached copy of Maizu installed as a desktop app —
+it no longer exists in your code. To remove it:
 
-Products contain:
+1. Open that window → click the three-dot menu in its title bar → **Uninstall Maizu Business Hub**
+2. Open Chrome → go to maizu.vercel.app → F12 → Application tab →
+   Service Workers → **Unregister**, then Clear storage → **Clear site data**
+3. Hard refresh with Ctrl+Shift+R
+4. (Optional) Reinstall the app from the install icon in Chrome's address bar —
+   it will now install the current design.
 
-```
-Product
-- id
-- title
-- description
-- price
-- vendor_id
-- category
-- images
-```
+## 6. Push to deploy
 
----
-
-## 4. Shopping Cart
-
-```
-Cart
-- user_id
-- products
-- quantities
-```
-
----
-
-## 5. Order System
-
-```
-Order
-- id
-- customer_id
-- products
-- total_price
-- payment_status
-- delivery_status
-```
-
----
-
-## 6. Payment System
-
-Possible integrations:
-
-* Paystack
-* Flutterwave
-* Stripe
-
-For Africa-first payments, Paystack or Flutterwave are recommended.
-
----
-
-# Development Workflow
-
-All developers must follow this workflow.
-
-### 1. Pull Latest Changes
-
-```
-git pull
-```
-
-### 2. Create Feature Branch
-
-Example:
-
-```
-git checkout -b vendor-system
-```
-
-### 3. Implement Feature
-
-Write and test code.
-
-### 4. Commit Changes
-
-```
+```powershell
+cd C:\Users\Sinethamba\maizu
 git add .
-git commit -m "Add vendor system"
+git commit -m "Vendor dashboard redesign, orders fix, open-store fix, brand logo"
+git push origin main --force
 ```
-
-### 5. Push Branch
-
-```
-git push origin vendor-system
-```
-
-### 6. Open Pull Request
-
-Create a Pull Request on GitHub for review.
-
----
-
-# MVP Development Roadmap
-
-Phase 1 (Core Platform)
-
-1. Authentication system
-2. Vendor registration
-3. Product upload
-4. Product listing page
-5. Shopping cart
-6. Checkout system
-
----
-
-# Team Responsibilities
-
-Project Lead:
-
-* Architecture decisions
-* Task organization
-* Code review
-
-Developers:
-
-* Build assigned features
-* Create pull requests
-* Maintain code quality
-
----
-
-# Vision
-
-MAIZU aims to become a leading digital marketplace for African fashion, empowering designers and creators to reach customers across the continent and globally.

@@ -2,177 +2,178 @@
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/utils/supabase";
+import Logo from "@/components/layout/Logo";
 
-const P      = "#E8401C";
-const DARK   = "#0F0F0F";
-const MUTED  = "#71717A";
-const BORDER = "#E4E4E7";
-const SOFT   = "#FFF3EF";
-const WHITE  = "#FFFFFF";
-const BG     = "#F7F7F5";
+/*
+  DesktopSidebar — left navigation for tablet/desktop.
+  - Official Maizu logo at the top (replaces plain text / emoji versions)
+  - Every link routes to a real, existing page
+  - "Open a store" goes to /dashboard/create-store (no more 404)
+  - Clean SVG icons throughout, no emojis
+*/
 
-/* ── SVG icon helper ────────────────────────────────────────── */
-function Icon({ d, size=16, color=MUTED }: { d:string; size?:number; color?:string }) {
+const I = {
+  home:      <path d="M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5" />,
+  search:    <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
+  video:     <><rect x="2" y="6" width="13" height="12" rx="2" /><path d="m15 10 7-4v12l-7-4" /></>,
+  store:     <><path d="M3 9 4.5 4h15L21 9" /><path d="M4 9v11h16V9" /><path d="M9 20v-6h6v6" /></>,
+  orders:    <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
+  heart:     <path d="M12 20.5C7 16.5 3.5 13.3 3.5 9.6 3.5 7 5.5 5 8 5c1.6 0 3.1.8 4 2.1C12.9 5.8 14.4 5 16 5c2.5 0 4.5 2 4.5 4.6 0 3.7-3.5 6.9-8.5 10.9Z" />,
+  bell:      <><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></>,
+  user:      <><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" /></>,
+  grid:      <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
+  plus:      <path d="M12 5v14M5 12h14" />,
+  chart:     <path d="M4 20V10M10 20V4M16 20v-8M21 20H3" />,
+  card:      <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /></>,
+  out:       <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5M21 12H9" /></>,
+};
+
+function Icon({ d, size = 18 }: { d: React.ReactNode; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {d.split(" M").map((path, i) => <path key={i} d={i===0?path:"M"+path} />)}
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      {d}
     </svg>
   );
 }
 
-const PATHS = {
-  home:      "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10",
-  search:    "M11 11m-8 0a8 8 0 1 0 16 0 8 8 0 0 0-16 0 M21 21l-4.35-4.35",
-  discover:  "M23 7L16 12 23 17 23 7 M1 5h15v14H1z",
-  stores:    "M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z M3 6h18",
-  wishlist:  "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z",
-  orders:    "M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
-  profile:   "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8",
-  bell:      "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0",
-  dashboard: "M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z",
-  analytics: "M18 20V10 M12 20V4 M6 20v-6",
-  products:  "M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16",
-  promo:     "M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z M7 7h.01",
-  settings:  "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
-  admin:     "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
-  signout:   "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9",
-  add:       "M12 5v14 M5 12h14",
-};
-
-function NavLink({ href, label, iconPath, badge }: { href:string; label:string; iconPath:string; badge?:number }) {
-  const pathname = usePathname();
-  const router   = useRouter();
-  const active   = href==="/" ? pathname==="/" : pathname===href || pathname.startsWith(href+"/");
-
-  return (
-    <button onClick={() => router.push(href)}
-      style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 16px", background:active?SOFT:"transparent", border:"none", cursor:"pointer", borderLeft:`3px solid ${active?P:"transparent"}`, transition:"background 0.15s", position:"relative" }}>
-      <Icon d={iconPath} color={active?P:MUTED} size={16} />
-      <span style={{ fontSize:13, fontWeight:active?600:400, color:active?P:DARK, flex:1, textAlign:"left" }}>{label}</span>
-      {badge !== undefined && badge > 0 && (
-        <span style={{ background:P, color:WHITE, borderRadius:"50%", width:18, height:18, fontSize:9, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>{badge>9?"9+":badge}</span>
-      )}
-    </button>
-  );
-}
-
-const Divider = () => <div style={{ height:"0.5px", background:BORDER, margin:"6px 16px" }} />;
-const Label   = ({ text }: { text:string }) => <div style={{ padding:"8px 16px 3px", fontSize:9, fontWeight:700, color:MUTED, letterSpacing:"0.1em" }}>{text}</div>;
-
 export default function DesktopSidebar() {
-  const router = useRouter();
-  const { isLoggedIn, profile, authUser } = useAuth();
-  const p        = profile as any;
-  const isVendor = p?.role === "vendor" || p?.role === "admin";
-  const isAdmin  = p?.role === "admin";
-  const name     = p?.full_name || (authUser as any)?.user_metadata?.full_name || "Account";
+  const router   = useRouter();
+  const pathname = usePathname();
+  const { authUser, profile, signOut } = useAuth() as any;
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
+  const role     = profile?.role || "buyer";
+  const isVendor = role === "vendor" || role === "admin";
+  const isAdmin  = role === "admin";
+
+  const go = (p: string) => router.push(p);
+  const active = (p: string) =>
+    p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(p + "/");
+
+  const Item = ({ path, icon, label }: { path: string; icon: React.ReactNode; label: string }) => {
+    const on = active(path);
+    return (
+      <button
+        onClick={() => go(path)}
+        className="msb-item"
+        style={{
+          display: "flex", alignItems: "center", gap: 12, width: "100%",
+          padding: "10px 14px", border: "none", borderRadius: 10, cursor: "pointer",
+          background: on ? "#FDEAE4" : "transparent",
+          color: on ? "#E8401C" : "#3D4351",
+          fontSize: 14, fontWeight: on ? 700 : 500, textAlign: "left",
+        }}
+      >
+        <Icon d={icon} />
+        {label}
+      </button>
+    );
   };
 
+  const Section = ({ title }: { title: string }) => (
+    <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1.6, color: "#9CA1AD", padding: "18px 14px 6px" }}>
+      {title}
+    </div>
+  );
+
   return (
-    <aside className="desktop-sidebar" style={{ display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
-      <div style={{ flex:1, overflowY:"auto" }}>
+    <aside
+      className="desktop-sidebar"
+      style={{
+        width: 240, minWidth: 240, height: "100vh", position: "sticky", top: 0,
+        background: "#FFFFFF", borderRight: "1px solid #ECECEA",
+        display: "flex", flexDirection: "column",
+      }}
+    >
+      <style>{`.msb-item:hover{ background:#F6F6F4 !important; }`}</style>
 
-        {/* Logo */}
-        <div onClick={() => router.push("/")} style={{ padding:"16px 16px 12px", cursor:"pointer" }}>
-          <div style={{ fontSize:20, fontWeight:900, letterSpacing:"-0.03em" }}>
-            <span style={{ color:P }}>mai</span><span style={{ color:DARK }}>zu</span>
-          </div>
-          <div style={{ fontSize:8, fontWeight:700, color:MUTED, letterSpacing:"0.12em" }}>BUSINESS HUB</div>
-        </div>
+      {/* Official marketplace logo */}
+      <div style={{ padding: "20px 16px 8px" }}>
+        <Logo size="md" />
+      </div>
 
-        <Divider />
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 8px" }}>
+        <Section title="BROWSE" />
+        <Item path="/"          icon={I.home}   label="Home" />
+        <Item path="/search"    icon={I.search} label="Search" />
+        <Item path="/discovery" icon={I.video}  label="Discover" />
+        <Item path="/stores"    icon={I.store}  label="Stores" />
 
-        {/* Browse */}
-        <Label text="BROWSE" />
-        <NavLink href="/"          label="Home"          iconPath={PATHS.home}     />
-        <NavLink href="/search"    label="Search"        iconPath={PATHS.search}   />
-        <NavLink href="/discovery" label="Discover"      iconPath={PATHS.discover} />
-        <NavLink href="/stores"    label="Stores"        iconPath={PATHS.stores}   />
-
-        {isLoggedIn && (
+        {authUser && (
           <>
-            <Divider />
-            <Label text="MY ACCOUNT" />
-            <NavLink href="/orders"        label="My Orders"    iconPath={PATHS.orders}   />
-            <NavLink href="/wishlist"      label="Saved"        iconPath={PATHS.wishlist} />
-            <NavLink href="/notifications" label="Notifications"iconPath={PATHS.bell}     />
-            <NavLink href="/profile"       label="Profile"      iconPath={PATHS.profile}  />
+            <Section title="MY ACCOUNT" />
+            <Item path="/orders"        icon={I.orders} label="My Orders" />
+            <Item path="/saved"         icon={I.heart}  label="Saved" />
+            <Item path="/notifications" icon={I.bell}   label="Notifications" />
+            <Item path="/profile"       icon={I.user}   label="Profile" />
           </>
         )}
 
         {isVendor && (
           <>
-            <Divider />
-            <Label text="VENDOR" />
-            <NavLink href="/dashboard"              label="Dashboard"    iconPath={PATHS.dashboard} />
-            <NavLink href="/dashboard/analytics"    label="Analytics"    iconPath={PATHS.analytics} />
-            <NavLink href="/dashboard/products"     label="My Products"  iconPath={PATHS.products}  />
-            <NavLink href="/dashboard/orders"       label="Orders"       iconPath={PATHS.orders}    />
-            <NavLink href="/dashboard/promos"       label="Promo Codes"  iconPath={PATHS.promo}     />
-            <NavLink href="/dashboard/subscription" label="Plan & Billing"iconPath={PATHS.settings} />
-
-            {/* Add product shortcut */}
-            <div style={{ padding:"8px 16px" }}>
-              <button onClick={() => router.push("/dashboard/products/new")} style={{ width:"100%", background:P, color:WHITE, border:"none", borderRadius:9, padding:"9px 0", fontSize:12, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-                <Icon d={PATHS.add} color={WHITE} size={14} /> Add product
-              </button>
-            </div>
+            <Section title="VENDOR" />
+            <Item path="/dashboard"                icon={I.grid}  label="Dashboard" />
+            <Item path="/dashboard/create-product" icon={I.plus}  label="Add Product" />
+            <Item path="/dashboard/orders"         icon={I.orders} label="Store Orders" />
+            <Item path="/dashboard/analytics"      icon={I.chart} label="Analytics" />
+            <Item path="/dashboard/subscription"   icon={I.card}  label="Subscription" />
           </>
         )}
 
         {isAdmin && (
           <>
-            <Divider />
-            <Label text="ADMIN" />
-            <NavLink href="/admin"        label="Overview"   iconPath={PATHS.admin}    />
-            <NavLink href="/admin/users"  label="Users"      iconPath={PATHS.profile}  />
-            <NavLink href="/admin/stores" label="Stores"     iconPath={PATHS.stores}   />
-            <NavLink href="/admin/orders" label="Orders"     iconPath={PATHS.orders}   />
-          </>
-        )}
-
-        <Divider />
-        <Label text="CATEGORIES" />
-        {["Fashion","Electronics","Beauty","Food","Home","Sports","Art & Crafts","Services"].map(cat => (
-          <button key={cat} onClick={() => router.push(`/search?q=${encodeURIComponent(cat.toLowerCase())}`)}
-            style={{ display:"block", width:"100%", textAlign:"left", padding:"7px 16px", background:"none", border:"none", cursor:"pointer", fontSize:12, color:DARK, fontWeight:400 }}>
-            {cat}
-          </button>
-        ))}
-
-        {!isLoggedIn && (
-          <>
-            <Divider />
-            <div style={{ padding:"10px 16px" }}>
-              <button onClick={() => router.push("/sell")} style={{ width:"100%", background:P, color:WHITE, border:"none", borderRadius:9, padding:"10px 0", fontSize:13, fontWeight:600, cursor:"pointer", marginBottom:8 }}>Open a free store</button>
-              <button onClick={() => router.push("/login")} style={{ width:"100%", background:WHITE, color:DARK, border:`1px solid ${BORDER}`, borderRadius:9, padding:"9px 0", fontSize:13, cursor:"pointer" }}>Sign in</button>
-            </div>
+            <Section title="ADMIN" />
+            <Item path="/admin" icon={I.grid} label="Admin Panel" />
           </>
         )}
       </div>
 
-      {/* Bottom: user info + sign out */}
-      {isLoggedIn && (
-        <div style={{ borderTop:`0.5px solid ${BORDER}`, padding:"12px 16px" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
-            <div style={{ width:32, height:32, borderRadius:"50%", background:`linear-gradient(135deg,${P},#FF8C61)`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <span style={{ fontSize:13, fontWeight:700, color:WHITE }}>{name.charAt(0).toUpperCase()}</span>
+      {/* Bottom: user chip + sign out / sign in */}
+      <div style={{ padding: 12, borderTop: "1px solid #ECECEA" }}>
+        {authUser ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px 12px" }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: "50%", background: "#E8401C", color: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15,
+              }}>
+                {(profile?.full_name || "U").charAt(0).toUpperCase()}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#161B26", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {profile?.full_name || "Account"}
+                </div>
+                <div style={{ fontSize: 11.5, color: "#9CA1AD", textTransform: "capitalize" }}>{role}</div>
+              </div>
             </div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:DARK, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{name}</div>
-              <div style={{ fontSize:10, color:MUTED, textTransform:"capitalize" }}>{p?.role||"buyer"}</div>
-            </div>
-          </div>
-          <button onClick={handleSignOut} style={{ width:"100%", display:"flex", alignItems:"center", gap:8, background:"#FEE2E2", border:"none", borderRadius:9, padding:"9px 12px", fontSize:12, color:"#EF4444", fontWeight:600, cursor:"pointer" }}>
-            <Icon d={PATHS.signout} color="#EF4444" size={14} /> Sign out
-          </button>
-        </div>
-      )}
+            <button
+              onClick={() => signOut?.()}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%",
+                padding: "10px 0", border: "none", borderRadius: 10, cursor: "pointer",
+                background: "#FDEAE4", color: "#E8401C", fontSize: 13.5, fontWeight: 700,
+              }}
+            >
+              <Icon d={I.out} size={16} /> Sign out
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => go("/sell")}
+              style={{ width: "100%", padding: "10px 0", border: "none", borderRadius: 10, cursor: "pointer", background: "#E8401C", color: "#fff", fontSize: 13.5, fontWeight: 700, marginBottom: 8 }}
+            >
+              Open a free store
+            </button>
+            <button
+              onClick={() => go("/login")}
+              style={{ width: "100%", padding: "10px 0", borderRadius: 10, cursor: "pointer", background: "#fff", color: "#161B26", fontSize: 13.5, fontWeight: 700, border: "1px solid #E3E3E0" }}
+            >
+              Sign in
+            </button>
+          </>
+        )}
+      </div>
     </aside>
   );
 }
