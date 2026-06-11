@@ -4,29 +4,29 @@ import { supabase } from "@/utils/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface UserProfile {
-  id:        string;
-  full_name: string;
-  email:     string;
-  role:      string;
+  id:          string;
+  full_name:   string;
+  email:       string;
+  role:        string;
   avatar_url?: string;
-  [key: string]: any; /* allows plan, bio, etc. */
+  [key: string]: any;
 }
 
 interface AuthContextType {
-  authUser:    User | null;
-  session:     Session | null;
-  profile:     UserProfile | null;
-  isLoggedIn:  boolean;
-  loading:     boolean;
+  authUser:       User | null;
+  session:        Session | null;
+  profile:        UserProfile | null;
+  isLoggedIn:     boolean;
+  loading:        boolean;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  authUser:    null,
-  session:     null,
-  profile:     null,
-  isLoggedIn:  false,
-  loading:     true,
+  authUser:       null,
+  session:        null,
+  profile:        null,
+  isLoggedIn:     false,
+  loading:        false, /* default false — don't block anything */
   refreshProfile: async () => {},
 });
 
@@ -43,8 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select("*")
         .eq("id", userId)
         .single();
-      if (data) setProfile(data);
-    } catch { /* silent — profile table may not have row yet */ }
+      if (data) setProfile(data as UserProfile);
+    } catch { /* silent */ }
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -52,40 +52,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [authUser, fetchProfile]);
 
   useEffect(() => {
-    /* ── 1. Restore session on mount (reads from localStorage automatically) ── */
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
+    /* Hard timeout — never block UI more than 2.5 seconds */
+    const timeout = setTimeout(() => setLoading(false), 2500);
+
+    supabase.auth.getSession()
+      .then(({ data: { session: s } }) => {
+        clearTimeout(timeout);
+        setSession(s);
+        setAuthUser(s?.user ?? null);
+        if (s?.user) fetchProfile(s.user.id);
+        setLoading(false);
+      })
+      .catch(() => {
+        clearTimeout(timeout);
+        setLoading(false);
+      });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setAuthUser(s?.user ?? null);
       if (s?.user) fetchProfile(s.user.id);
+      else setProfile(null);
       setLoading(false);
     });
 
-    /* ── 2. Listen for auth state changes (login, logout, token refresh) ── */
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
-        setSession(s);
-        setAuthUser(s?.user ?? null);
-        if (s?.user) {
-          await fetchProfile(s.user.id);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   return (
-    <AuthContext.Provider value={{
-      authUser,
-      session,
-      profile,
-      isLoggedIn: !!authUser,
-      loading,
-      refreshProfile,
-    }}>
+    <AuthContext.Provider value={{ authUser, session, profile, isLoggedIn: !!authUser, loading, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
