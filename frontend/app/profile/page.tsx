@@ -308,7 +308,7 @@ export default function ProfilePage() {
                   key={o.id}
                   onClick={() => router.push(`/orders/${o.id}`)}
                   style={{ background: WHITE, borderRadius: 12, padding: "14px 16px", border: `0.5px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                >
+                > 
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: DARK }}>Order #{o.id.slice(0, 8).toUpperCase()}</div>
                     <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{new Date(o.created_at).toLocaleDateString("en-ZA")}</div>

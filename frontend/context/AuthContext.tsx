@@ -1,126 +1,89 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import type { User, Session } from "@supabase/supabase-js";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import type { UserProfile } from "@/utils/api";
+import type { User, Session } from "@supabase/supabase-js";
 
-/* ── Types ──────────────────────────────────────────────────── */
-interface AuthContextValue {
-  authUser:       User | null;
-  profile:        UserProfile | null;
-  session:        Session | null;
-  loading:        boolean;
-  isLoggedIn:     boolean;
-  signUp:         (email: string, password: string, full_name: string, role?: string) => Promise<void>;
-  signIn:         (email: string, password: string) => Promise<void>;
-  signOut:        () => Promise<void>;
+interface UserProfile {
+  id:        string;
+  full_name: string;
+  email:     string;
+  role:      string;
+  avatar_url?: string;
+  [key: string]: any; /* allows plan, bio, etc. */
+}
+
+interface AuthContextType {
+  authUser:    User | null;
+  session:     Session | null;
+  profile:     UserProfile | null;
+  isLoggedIn:  boolean;
+  loading:     boolean;
   refreshProfile: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextType>({
+  authUser:    null,
+  session:     null,
+  profile:     null,
+  isLoggedIn:  false,
+  loading:     true,
+  refreshProfile: async () => {},
+});
 
-/* ── Provider ───────────────────────────────────────────────── */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authUser, setAuthUser] = useState<User | null>(null);
-  const [profile,  setProfile]  = useState<UserProfile | null>(null);
   const [session,  setSession]  = useState<Session | null>(null);
+  const [profile,  setProfile]  = useState<UserProfile | null>(null);
   const [loading,  setLoading]  = useState(true);
 
-  /* Fetch profile from public.users */
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("users")
-        .select("id, email, full_name, role, avatar_url, bio")
+        .select("*")
         .eq("id", userId)
         .single();
-
-      if (!error && data) {
-        setProfile(data as UserProfile);
-      }
-    } catch {
-      // Profile may not exist yet — that's okay
-    }
+      if (data) setProfile(data);
+    } catch { /* silent — profile table may not have row yet */ }
   }, []);
 
   const refreshProfile = useCallback(async () => {
     if (authUser) await fetchProfile(authUser.id);
   }, [authUser, fetchProfile]);
 
-  /* Restore session on mount */
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setAuthUser(data.session?.user ?? null);
-      if (data.session?.user) {
-        fetchProfile(data.session.user.id);
-      }
+    /* ── 1. Restore session on mount (reads from localStorage automatically) ── */
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setAuthUser(s?.user ?? null);
+      if (s?.user) fetchProfile(s.user.id);
       setLoading(false);
     });
 
-    /* Listen for login / logout / token refresh */
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setAuthUser(newSession?.user ?? null);
-      if (newSession?.user) {
-        fetchProfile(newSession.user.id);
-      } else {
-        setProfile(null);
+    /* ── 2. Listen for auth state changes (login, logout, token refresh) ── */
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, s) => {
+        setSession(s);
+        setAuthUser(s?.user ?? null);
+        if (s?.user) {
+          await fetchProfile(s.user.id);
+        } else {
+          setProfile(null);
+        }
+        setLoading(false);
       }
-    });
+    );
 
-    return () => listener.subscription.unsubscribe();
+    return () => subscription.unsubscribe();
   }, [fetchProfile]);
-
-  /* ── SIGN UP ──────────────────────────────────────────────── */
-  const signUp = async (
-    email: string,
-    password: string,
-    full_name: string,
-    role = "buyer"
-  ) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name, role },
-      },
-    });
-
-    if (error) throw new Error(error.message);
-    // The trigger in user_trigger.sql automatically creates
-    // the public.users profile row — no manual insert needed.
-  };
-
-  /* ── SIGN IN ──────────────────────────────────────────────── */
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw new Error(error.message);
-    // onAuthStateChange fires automatically and sets authUser + profile
-  };
-
-  /* ── SIGN OUT ─────────────────────────────────────────────── */
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setAuthUser(null);
-    setProfile(null);
-    setSession(null);
-  };
 
   return (
     <AuthContext.Provider value={{
       authUser,
-      profile,
       session,
-      loading,
+      profile,
       isLoggedIn: !!authUser,
-      signUp,
-      signIn,
-      signOut,
+      loading,
       refreshProfile,
     }}>
       {children}
@@ -128,27 +91,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── useAuth hook ───────────────────────────────────────────── */
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
-  return ctx;
-}
-
-/* ── useRequireAuth — redirect if not logged in ─────────────── */
-export function useRequireAuth(redirectTo = "/login") {
-  const { authUser, loading } = useAuth();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (!loading) {
-      if (!authUser && typeof window !== "undefined") {
-        window.location.href = redirectTo;
-      } else {
-        setReady(true);
-      }
-    }
-  }, [authUser, loading, redirectTo]);
-
-  return { isReady: ready, loading };
-}
+export const useAuth = () => useContext(AuthContext);
