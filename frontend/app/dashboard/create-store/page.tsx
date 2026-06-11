@@ -1,304 +1,307 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { C } from "@/utils/constants";
-import { useAuth } from "@/context/AuthContext";
-import { storesApi } from "@/utils/api";
-import Header from "@/components/layout/Header";
+import { supabase } from "@/utils/supabase";
+
+/*
+  Open Store — rebuilt from scratch so it can never hang on a loading screen.
+
+  Why the old one didn't load: it waited on the AuthContext "loading" state,
+  which sometimes never resolves. This version talks to Supabase directly,
+  with a 6-second timeout — you always see either the form, a sign-in
+  prompt, or a clear error message. Never a blank page.
+
+  3 steps: Details → Logo (optional) → Review & Launch.
+  Logo upload uses your Cloudinary unsigned preset (same as create-product).
+*/
+
+const CLOUD_NAME    = "ddjf6z9dv";
+const UPLOAD_PRESET = "maizu_unsigned";
+
+const T = {
+  primary: "#E8401C", primarySoft: "#FDEAE4",
+  ink: "#161B26", sub: "#6B7080", faint: "#9CA1AD",
+  bg: "#F7F7F5", card: "#FFFFFF", border: "#ECECEA",
+};
 
 const CATEGORIES = [
-  "Fashion", "Electronics", "Beauty", "Food",
-  "Home", "Sports", "Services", "Art & Crafts",
-  "Health", "Education", "Entertainment", "Other",
-];
-
-const FLOORS = [
-  "Ground Floor - Fashion & Clothing",
-  "Ground Floor - Electronics & Tech",
-  "Ground Floor - Beauty & Wellness",
-  "Ground Floor - Food & Dining",
-  "Ground Floor - Home & Living",
-  "Ground Floor - Sports & Fitness",
-  "Ground Floor - Services",
-  "Ground Floor - Art & Crafts",
+  "Fashion & Clothing", "Food & Drinks", "Beauty & Health", "Electronics",
+  "Home & Decor", "Art & Crafts", "Services", "Other",
 ];
 
 export default function CreateStorePage() {
   const router = useRouter();
-  const { isLoggedIn, loading, profile } = useAuth();
 
-  const [form, setForm] = useState({
-    name:           "",
-    description:    "",
-    category:       "",
-    floor_location: "",
-  });
-  const [logoFile,   setLogoFile]   = useState<File | null>(null);
-  const [bannerFile, setBannerFile] = useState<File | null>(null);
-  const [logoPreview,   setLogoPreview]   = useState<string | null>(null);
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [busy,  setBusy]  = useState(false);
-  const [error, setError] = useState("");
-  const [step,  setStep]  = useState(1); // 1=details, 2=images, 3=review
+  const [authState, setAuthState] = useState<"checking" | "in" | "out" | "error">("checking");
+  const [userId, setUserId]       = useState("");
 
-  const logoRef   = useRef<HTMLInputElement>(null);
-  const bannerRef = useRef<HTMLInputElement>(null);
+  const [step, setStep]         = useState(1);
+  const [name, setName]         = useState("");
+  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [desc, setDesc]         = useState("");
+  const [city, setCity]         = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPrev, setLogoPrev] = useState("");
+  const [busy, setBusy]         = useState(false);
+  const [error, setError]       = useState("");
 
+  /* ── Auth check that cannot hang: direct call + 6s timeout ── */
   useEffect(() => {
-    if (!loading && !isLoggedIn) router.push("/login");
-  }, [loading, isLoggedIn, router]);
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) { settled = true; setAuthState("error"); }
+    }, 6000);
 
-  const set = (k: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-      setForm(prev => ({ ...prev, [k]: e.target.value }));
+    supabase.auth.getUser()
+      .then(({ data, error }) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (error || !data?.user) setAuthState("out");
+        else { setUserId(data.user.id); setAuthState("in"); }
+      })
+      .catch(() => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        setAuthState("error");
+      });
 
-  const handleFileChange = (type: "logo" | "banner") =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      if (type === "logo")   { setLogoFile(file);   setLogoPreview(url); }
-      if (type === "banner") { setBannerFile(file); setBannerPreview(url); }
-    };
+    return () => clearTimeout(timer);
+  }, []);
 
-  const validateStep1 = () => {
-    if (!form.name.trim())     return "Store name is required.";
-    if (!form.category)        return "Please select a category.";
-    if (!form.description.trim()) return "Please add a short description.";
-    return null;
+  const onPickLogo = (f: File | null) => {
+    setLogoFile(f);
+    if (f) {
+      const r = new FileReader();
+      r.onload = () => setLogoPrev(r.result as string);
+      r.readAsDataURL(f);
+    } else setLogoPrev("");
   };
 
-  const handleNext = () => {
-    if (step === 1) {
-      const err = validateStep1();
-      if (err) { setError(err); return; }
-    }
+  const uploadLogo = async (): Promise<string> => {
+    if (!logoFile) return "";
+    const fd = new FormData();
+    fd.append("file", logoFile);
+    fd.append("upload_preset", UPLOAD_PRESET);
+    const res  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error("Logo upload failed — you can skip the logo and add it later.");
+    return data.secure_url;
+  };
+
+  const launch = async () => {
     setError("");
-    setStep(prev => prev + 1);
-  };
-
-  const handleSubmit = async () => {
     setBusy(true);
-    setError("");
     try {
-      const fd = new FormData();
-      fd.append("name",           form.name.trim());
-      fd.append("description",    form.description.trim());
-      fd.append("category",       form.category);
-      fd.append("floor_location", form.floor_location);
-      if (logoFile)   fd.append("logo",   logoFile);
-      if (bannerFile) fd.append("banner", bannerFile);
+      const logo_url = await uploadLogo();
+      const { data, error: dbErr } = await supabase
+        .from("stores")
+        .insert({
+          owner_id:    userId,
+          name:        name.trim(),
+          category,
+          description: desc.trim(),
+          location:    city.trim() || null,
+          logo_url:    logo_url || null,
+        })
+        .select("id")
+        .single();
+      if (dbErr) throw new Error(dbErr.message);
 
-      const store = await storesApi.create(fd);
-      router.push(`/dashboard/stores/${store.id}`);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create store.");
+      // Make sure the account is marked as a vendor
+      await supabase.from("users").update({ role: "vendor" }).eq("id", userId);
+
+      router.push(data?.id ? `/dashboard/stores/${data.id}` : "/dashboard");
+    } catch (e: any) {
+      setError(e.message || "Could not create the store. Please try again.");
       setBusy(false);
     }
   };
 
-  if (loading) return null;
-
-  /* ── Progress bar ── */
-  const Progress = () => (
-    <div style={{ display: "flex", gap: 6, marginBottom: 24 }}>
-      {[1, 2, 3].map(s => (
-        <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: s <= step ? C.primary : C.border, transition: "background 0.3s" }} />
-      ))}
-    </div>
+  const label: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, color: T.ink, marginBottom: 6, display: "block" };
+  const input: React.CSSProperties = {
+    width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid #E0E0DD",
+    fontSize: 14, color: T.ink, background: "#FBFBFA", outline: "none",
+  };
+  const Card = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 18, padding: 24 }}>{children}</div>
   );
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "12px 14px",
-    border: `1.5px solid ${C.border}`, borderRadius: 12,
-    fontSize: 14, outline: "none", color: C.dark,
-    boxSizing: "border-box", background: "#FAFAFA",
-  };
+  /* ── Auth gates: always show SOMETHING, never blank ── */
+  if (authState === "checking") {
+    return (
+      <Shell>
+        <div style={{ textAlign: "center", padding: "70px 20px", color: T.sub, fontSize: 14 }}>
+          Checking your account…
+        </div>
+      </Shell>
+    );
+  }
+  if (authState === "out") {
+    return (
+      <Shell>
+        <Card>
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: T.ink }}>Sign in to open your store</div>
+            <div style={{ fontSize: 13.5, color: T.sub, marginTop: 6 }}>It takes less than a minute, and stores are free.</div>
+            <button onClick={() => router.push("/login")}
+              style={{ marginTop: 18, background: T.primary, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              Sign in
+            </button>
+          </div>
+        </Card>
+      </Shell>
+    );
+  }
+  if (authState === "error") {
+    return (
+      <Shell>
+        <Card>
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: T.ink }}>Connection problem</div>
+            <div style={{ fontSize: 13.5, color: T.sub, marginTop: 6 }}>
+              We couldn't reach the server. Check your internet and try again.
+            </div>
+            <button onClick={() => window.location.reload()}
+              style={{ marginTop: 18, background: T.ink, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              Retry
+            </button>
+          </div>
+        </Card>
+      </Shell>
+    );
+  }
 
-  const labelStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 600, color: C.dark,
-    display: "block", marginBottom: 6,
-  };
+  /* ── Wizard ── */
+  const steps = ["Store details", "Logo", "Review & launch"];
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 40 }}>
-      <Header />
+    <Shell>
+      {/* Back + heading */}
+      <button onClick={() => (step > 1 ? setStep(step - 1) : router.push("/dashboard"))}
+        style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", color: T.sub, fontSize: 13.5, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5m6 6-6-6 6-6" /></svg>
+        {step > 1 ? "Back" : "Dashboard"}
+      </button>
+      <h1 style={{ fontSize: 26, fontWeight: 800, color: T.ink, margin: "10px 0 4px", letterSpacing: -0.4 }}>Open your store</h1>
+      <p style={{ fontSize: 14, color: T.sub, margin: "0 0 18px" }}>Free to open. Start selling to buyers across South Africa.</p>
 
-      {/* Page header */}
-      <div style={{ background: C.white, padding: "18px 16px 14px", borderBottom: `1px solid ${C.border}` }}>
-        <button onClick={() => step > 1 ? setStep(s => s - 1) : router.back()} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: C.dark, padding: 0, marginBottom: 10 }}>
-          ‹ Back
-        </button>
-        <div style={{ fontSize: 22, fontWeight: 800, color: C.dark }}>Create Your Store</div>
-        <div style={{ fontSize: 13, color: C.gray, marginTop: 3 }}>
-          Step {step} of 3 — {step === 1 ? "Store Details" : step === 2 ? "Add Images" : "Review & Launch"}
-        </div>
+      {/* Step indicator */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+        {steps.map((s, i) => {
+          const on = step === i + 1, past = step > i + 1;
+          return (
+            <div key={s} style={{ flex: 1 }}>
+              <div style={{ height: 4, borderRadius: 99, background: on || past ? T.primary : "#E6E6E3" }} />
+              <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 6, color: on ? T.primary : T.faint }}>{s}</div>
+            </div>
+          );
+        })}
       </div>
 
-      <div style={{ padding: "20px 16px" }}>
-        <Progress />
-
-        {/* Error */}
-        {error && (
-          <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#991B1B" }}>
-            {error}
-          </div>
-        )}
-
-        {/* ── STEP 1: Details ── */}
-        {step === 1 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div>
-              <label style={labelStyle}>Store Name *</label>
-              <input value={form.name} onChange={set("name")} placeholder="e.g. Ankara Royale" style={inputStyle} />
-            </div>
-
-            <div>
-              <label style={labelStyle}>Category *</label>
-              <select value={form.category} onChange={set("category")} style={inputStyle}>
-                <option value="">Select a category…</option>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Floor Location</label>
-              <select value={form.floor_location} onChange={set("floor_location")} style={inputStyle}>
-                <option value="">Select floor location…</option>
-                {FLOORS.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Description *</label>
-              <textarea
-                value={form.description}
-                onChange={set("description") as React.ChangeEventHandler<HTMLTextAreaElement>}
-                placeholder="Tell customers what your store is about…"
-                rows={4}
-                style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 2: Images ── */}
-        {step === 2 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Logo */}
-            <div>
-              <label style={labelStyle}>Store Logo</label>
-              <div style={{ fontSize: 12, color: C.gray, marginBottom: 10 }}>Square image recommended (e.g. 400×400px)</div>
-              <input ref={logoRef} type="file" accept="image/*" onChange={handleFileChange("logo")} style={{ display: "none" }} />
-              <div
-                onClick={() => logoRef.current?.click()}
-                style={{ width: 120, height: 120, borderRadius: 16, border: `2px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden", background: "#FAFAFA" }}
-              >
-                {logoPreview
-                  ? <img src={logoPreview} alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <div style={{ textAlign: "center" }}><div style={{ fontSize: 28 }}>📷</div><div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Upload logo</div></div>
-                }
-              </div>
-              {logoPreview && (
-                <button onClick={() => { setLogoFile(null); setLogoPreview(null); }} style={{ marginTop: 8, background: "none", border: "none", color: C.gray, fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
-                  Remove
-                </button>
-              )}
-            </div>
-
-            {/* Banner */}
-            <div>
-              <label style={labelStyle}>Store Banner</label>
-              <div style={{ fontSize: 12, color: C.gray, marginBottom: 10 }}>Wide image recommended (e.g. 1200×400px)</div>
-              <input ref={bannerRef} type="file" accept="image/*" onChange={handleFileChange("banner")} style={{ display: "none" }} />
-              <div
-                onClick={() => bannerRef.current?.click()}
-                style={{ width: "100%", height: 140, borderRadius: 16, border: `2px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden", background: "#FAFAFA" }}
-              >
-                {bannerPreview
-                  ? <img src={bannerPreview} alt="banner" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <div style={{ textAlign: "center" }}><div style={{ fontSize: 28 }}>🖼️</div><div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Upload banner image</div></div>
-                }
-              </div>
-              {bannerPreview && (
-                <button onClick={() => { setBannerFile(null); setBannerPreview(null); }} style={{ marginTop: 8, background: "none", border: "none", color: C.gray, fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
-                  Remove
-                </button>
-              )}
-            </div>
-
-            <div style={{ background: C.softOrange, borderRadius: 12, padding: "12px 14px", fontSize: 12, color: C.dark, lineHeight: 1.6 }}>
-              💡 Images are optional — you can add them later from your store management page.
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 3: Review ── */}
-        {step === 3 && (
-          <div>
-            {/* Preview card */}
-            <div style={{ background: C.white, borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.08)", marginBottom: 20 }}>
-              {/* Banner */}
-              <div style={{ height: 120, background: bannerPreview ? "transparent" : `linear-gradient(135deg, ${C.primary}22, ${C.primary}44)`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>
-                {bannerPreview ? <img src={bannerPreview} alt="banner" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🏪"}
-              </div>
-
-              <div style={{ padding: "16px" }}>
-                {/* Logo + name */}
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                  <div style={{ width: 52, height: 52, borderRadius: 12, background: logoPreview ? "transparent" : C.softOrange, overflow: "hidden", border: `2px solid ${C.white}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>
-                    {logoPreview ? <img src={logoPreview} alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🏪"}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: C.dark }}>{form.name}</div>
-                    <div style={{ fontSize: 12, color: C.gray }}>{form.category}</div>
-                  </div>
-                </div>
-                <div style={{ fontSize: 13, color: C.dark, lineHeight: 1.6, marginBottom: 10 }}>{form.description}</div>
-                {form.floor_location && (
-                  <div style={{ fontSize: 11, color: C.gray, display: "flex", alignItems: "center", gap: 4 }}>
-                    📍 {form.floor_location}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Summary */}
-            <div style={{ background: C.white, borderRadius: 14, padding: "14px 16px", marginBottom: 20 }}>
-              {[
-                ["Store Name",  form.name],
-                ["Category",    form.category],
-                ["Location",    form.floor_location || "Not specified"],
-                ["Logo",        logoFile ? logoFile.name : "No logo (can add later)"],
-                ["Banner",      bannerFile ? bannerFile.name : "No banner (can add later)"],
-              ].map(([label, val]) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${C.border}`, fontSize: 13 }}>
-                  <span style={{ color: C.gray }}>{label}</span>
-                  <span style={{ color: C.dark, fontWeight: 500, textAlign: "right", maxWidth: "60%" }}>{val}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Navigation buttons */}
-        <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-          {step > 1 && (
-            <button onClick={() => setStep(s => s - 1)} style={{ flex: 1, background: C.white, color: C.dark, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: "14px 0", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
-              Back
-            </button>
-          )}
-          {step < 3 ? (
-            <button onClick={handleNext} style={{ flex: 2, background: C.primary, color: "#fff", border: "none", borderRadius: 14, padding: "14px 0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              Continue →
-            </button>
-          ) : (
-            <button onClick={handleSubmit} disabled={busy} style={{ flex: 2, background: busy ? C.grayLight : C.primary, color: "#fff", border: "none", borderRadius: 14, padding: "14px 0", fontSize: 15, fontWeight: 700, cursor: busy ? "default" : "pointer" }}>
-              {busy ? "Creating store…" : "🚀 Launch My Store"}
-            </button>
-          )}
+      {error && (
+        <div style={{ background: "#FDECEC", color: "#B42318", borderRadius: 12, padding: "12px 16px", fontSize: 13, fontWeight: 600, marginBottom: 14 }}>
+          {error}
         </div>
-      </div>
+      )}
+
+      {step === 1 && (
+        <Card>
+          <label style={label}>Store name</label>
+          <input style={{ ...input, marginBottom: 16 }} value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Thandi's Kitchen" maxLength={60} />
+
+          <label style={label}>Category</label>
+          <select style={{ ...input, marginBottom: 16 }} value={category} onChange={(e) => setCategory(e.target.value)}>
+            {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+          </select>
+
+          <label style={label}>What do you sell?</label>
+          <textarea style={{ ...input, marginBottom: 16, minHeight: 90, resize: "vertical", fontFamily: "inherit" }}
+            value={desc} onChange={(e) => setDesc(e.target.value)}
+            placeholder="A short description buyers will see on your store page" maxLength={400} />
+
+          <label style={label}>City (optional)</label>
+          <input style={{ ...input, marginBottom: 20 }} value={city} onChange={(e) => setCity(e.target.value)}
+            placeholder="e.g. Durban" maxLength={60} />
+
+          <button
+            onClick={() => {
+              if (!name.trim()) return setError("Give your store a name.");
+              setError(""); setStep(2);
+            }}
+            style={{ width: "100%", background: T.primary, color: "#fff", border: "none", borderRadius: 12, padding: "14px 0", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
+            Continue
+          </button>
+        </Card>
+      )}
+
+      {step === 2 && (
+        <Card>
+          <label style={label}>Store logo (optional)</label>
+          <label htmlFor="mzs-logo" style={{
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10,
+            border: "1.5px dashed #D8D8D4", borderRadius: 14, padding: "30px 16px", cursor: "pointer",
+            background: "#FBFBFA", textAlign: "center",
+          }}>
+            {logoPrev ? (
+              <img src={logoPrev} alt="" style={{ width: 92, height: 92, borderRadius: 18, objectFit: "cover" }} />
+            ) : (
+              <div style={{ width: 72, height: 72, borderRadius: 18, background: T.primarySoft, color: T.primary, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 28 }}>
+                {(name || "S").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>
+              {logoFile ? logoFile.name : "Tap to choose a logo"}
+            </div>
+            <div style={{ fontSize: 12, color: T.faint }}>Square images look best. You can skip this and add one later.</div>
+          </label>
+          <input id="mzs-logo" type="file" accept="image/*" style={{ display: "none" }}
+            onChange={(e) => onPickLogo(e.target.files?.[0] || null)} />
+
+          <button onClick={() => { setError(""); setStep(3); }}
+            style={{ marginTop: 20, width: "100%", background: T.primary, color: "#fff", border: "none", borderRadius: 12, padding: "14px 0", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
+            Continue
+          </button>
+          <button onClick={() => { onPickLogo(null); setError(""); setStep(3); }}
+            style={{ marginTop: 10, width: "100%", background: "#fff", color: T.sub, border: "1px solid #E0E0DD", borderRadius: 12, padding: "12px 0", fontSize: 13.5, fontWeight: 700, cursor: "pointer" }}>
+            Skip for now
+          </button>
+        </Card>
+      )}
+
+      {step === 3 && (
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 16, borderBottom: `1px solid ${T.border}` }}>
+            {logoPrev ? (
+              <img src={logoPrev} alt="" style={{ width: 56, height: 56, borderRadius: 14, objectFit: "cover" }} />
+            ) : (
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: T.primarySoft, color: T.primary, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 22 }}>
+                {(name || "S").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: T.ink }}>{name}</div>
+              <div style={{ fontSize: 12.5, color: T.sub }}>{category}{city.trim() ? ` · ${city.trim()}` : ""}</div>
+            </div>
+          </div>
+          {desc.trim() && <div style={{ fontSize: 13.5, color: T.sub, padding: "14px 0 2px" }}>{desc.trim()}</div>}
+
+          <button onClick={launch} disabled={busy}
+            style={{ marginTop: 20, width: "100%", background: busy ? "#F0A18E" : T.primary, color: "#fff", border: "none", borderRadius: 12, padding: "14px 0", fontSize: 15, fontWeight: 800, cursor: busy ? "default" : "pointer" }}>
+            {busy ? "Creating your store…" : "Launch my store"}
+          </button>
+        </Card>
+      )}
+    </Shell>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ minHeight: "100vh", background: "#F7F7F5" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "28px 20px 60px" }}>{children}</div>
     </div>
   );
 }
