@@ -2,7 +2,7 @@
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import Logo from "@/components/layout/Logo";
+
 
 /*
   DesktopSidebar — left navigation for tablet/desktop.
@@ -87,10 +87,7 @@ export default function DesktopSidebar() {
     >
       <style>{`.msb-item:hover{ background:#F6F6F4 !important; }`}</style>
 
-      {/* Official marketplace logo */}
-      <div style={{ padding: "20px 16px 8px" }}>
-        <Logo size="md" />
-      </div>
+     
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 8px" }}>
         <Section title="BROWSE" />
