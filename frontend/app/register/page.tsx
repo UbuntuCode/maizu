@@ -33,7 +33,7 @@ const checkStrength = (pw: string): StrengthResult => {
     number:  /[0-9]/.test(pw),
     special: /[^A-Za-z0-9]/.test(pw),
   };
-  const passed = Object.values(checks).filter(Boolean).length;
+  const passed = Math.min(Object.values(checks).filter(Boolean).length, 4) as 0|1|2|3|4;
   const scores: [string, string][] = [
     ["Too short",  "#EF4444"],
     ["Weak",       "#EF4444"],
@@ -41,7 +41,7 @@ const checkStrength = (pw: string): StrengthResult => {
     ["Good",       "#3B82F6"],
     ["Strong",     "#10B981"],
   ];
-  return { score: passed as 0|1|2|3|4, label: scores[passed][0], color: scores[passed][1], checks };
+  return { score: passed, label: scores[passed][0], color: scores[passed][1], checks };
 };
 
 /* ── Check rule item ────────────────────────────────────────── */
