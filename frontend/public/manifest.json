@@ -84,12 +84,17 @@
     }
   ],
   "screenshots": [
-    {
-      "src": "/screenshots/home.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Maizu Home"
-    }
-  ]
+  {
+    "src": "/screenshots/home.png",
+    "sizes": "1080x1920",
+    "type": "image/png",
+    "form_factor": "narrow"
+  },
+  {
+    "src": "/screenshots/desktop.png",
+    "sizes": "1920x1080",
+    "type": "image/png",
+    "form_factor": "wide"
+  }
+]
 }
