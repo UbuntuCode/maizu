@@ -1,11 +1,24 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false,
-  eslint: {
-    ignoreDuringBuilds: true,
+  images: {
+    /* Allow Next.js Image component to optimize Unsplash + Cloudinary images */
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
+    ],
+    /* Generates WebP/AVIF automatically, served at the right size */
+    formats: ["image/avif", "image/webp"],
   },
-  typescript: {
-    ignoreBuildErrors: true,
+
+  /* Reduce legacy JS bloat — only target modern browsers */
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error"] } : false,
   },
 };
 
