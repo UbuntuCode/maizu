@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { C } from "@/utils/constants";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
-import { AdminNav } from "../page";
+import AdminNav from "@/components/admin/AdminNav";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
