@@ -1,145 +1,154 @@
-/* ============================================================
+/* ════════════════════════════════════════════════════════════
    MAIZU SERVICE WORKER
-   Handles offline caching so the app works without internet
-   ============================================================ */
+   Provides: offline support, smart caching, install reliability,
+   and push notification handling (OneSignal-compatible)
+════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME    = "maizu-v1";
-const OFFLINE_URL   = "/offline";
+const CACHE_VERSION = "maizu-v1";
+const STATIC_CACHE   = `${CACHE_VERSION}-static`;
+const RUNTIME_CACHE  = `${CACHE_VERSION}-runtime`;
+const IMAGE_CACHE     = `${CACHE_VERSION}-images`;
 
-/* Assets to cache immediately on install */
+/* Core files needed for the app shell to work offline */
 const PRECACHE_URLS = [
   "/",
-  "/stores",
   "/offline",
   "/manifest.json",
+  "/icons/icon-192x192.png",
+  "/icons/icon-512x512.png",
 ];
 
-/* ── INSTALL ─────────────────────────────────────────────────
-   Runs once when the service worker is first installed.
-   Pre-caches the most important pages.
-─────────────────────────────────────────────────────────────*/
+/* ── INSTALL: cache the app shell ──────────────────────────── */
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS).catch(() => {
-        /* Silently ignore if offline pages can't be cached */
+    caches.open(STATIC_CACHE).then((cache) => {
+      return cache.addAll(PRECACHE_URLS).catch((err) => {
+        console.warn("Precache failed for some assets:", err);
       });
     })
   );
-  /* Take control immediately — don't wait for old SW to expire */
   self.skipWaiting();
 });
 
-/* ── ACTIVATE ────────────────────────────────────────────────
-   Runs when a new service worker takes over.
-   Cleans up old caches from previous versions.
-─────────────────────────────────────────────────────────────*/
+/* ── ACTIVATE: clean up old cache versions ─────────────────── */
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) =>
+    caches.keys().then((keys) =>
       Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+        keys
+          .filter((key) => key.startsWith("maizu-") && !key.startsWith(CACHE_VERSION))
+          .map((key) => caches.delete(key))
       )
     )
   );
   self.clients.claim();
 });
 
-/* ── FETCH ───────────────────────────────────────────────────
-   Intercepts every network request.
-   Strategy:
-   - API calls → Network first, fall back to cache
-   - Pages     → Network first, fall back to offline page
-   - Assets    → Cache first, fall back to network
-─────────────────────────────────────────────────────────────*/
+/* ── FETCH: smart caching strategy per request type ────────── */
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  /* Skip non-GET requests and browser extensions */
+  /* Skip non-GET requests, API calls, and cross-origin payment/analytics calls */
   if (request.method !== "GET") return;
-  if (!url.protocol.startsWith("http")) return;
+  if (url.pathname.startsWith("/api/")) return;
+  if (url.origin.includes("railway.app")) return;
+  if (url.origin.includes("flutterwave.com")) return;
+  if (url.origin.includes("payfast.co.za")) return;
+  if (url.origin.includes("supabase.co")) return;
 
-  /* API calls — always try network, don't cache responses */
-  if (url.pathname.startsWith("/api/")) {
+  /* Images — cache-first (they rarely change once uploaded) */
+  if (request.destination === "image") {
     event.respondWith(
-      fetch(request).catch(() => {
-        return new Response(
-          JSON.stringify({ success: false, message: "You are offline. Please check your internet connection." }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-      })
-    );
-    return;
-  }
-
-  /* Static assets (JS, CSS, images) — cache first */
-  if (
-    url.pathname.startsWith("/_next/static/") ||
-    url.pathname.startsWith("/icons/") ||
-    url.pathname.endsWith(".png") ||
-    url.pathname.endsWith(".jpg") ||
-    url.pathname.endsWith(".svg") ||
-    url.pathname.endsWith(".ico")
-  ) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        });
-      })
-    );
-    return;
-  }
-
-  /* HTML pages — network first, fall back to offline page */
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        /* Cache successful page responses */
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      })
-      .catch(() => {
-        /* Try cache first, then offline page */
-        return caches.match(request).then((cached) => {
+      caches.open(IMAGE_CACHE).then((cache) =>
+        cache.match(request).then((cached) => {
           if (cached) return cached;
-          return caches.match(OFFLINE_URL);
-        });
+          return fetch(request)
+            .then((response) => {
+              if (response.ok) cache.put(request, response.clone());
+              return response;
+            })
+            .catch(() => cached); /* fail silently if offline and not cached */
+        })
+      )
+    );
+    return;
+  }
+
+  /* Navigation requests (page loads) — network-first, falls back to cache, then offline page */
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() =>
+          caches.match(request).then((cached) => cached || caches.match("/offline"))
+        )
+    );
+    return;
+  }
+
+  /* Everything else (JS, CSS, fonts) — stale-while-revalidate */
+  event.respondWith(
+    caches.open(RUNTIME_CACHE).then((cache) =>
+      cache.match(request).then((cached) => {
+        const fetchPromise = fetch(request)
+          .then((response) => {
+            if (response.ok) cache.put(request, response.clone());
+            return response;
+          })
+          .catch(() => cached);
+        return cached || fetchPromise;
       })
+    )
   );
 });
 
-/* ── PUSH NOTIFICATIONS (ready for future use) ───────────────*/
+/* ── PUSH NOTIFICATIONS ─────────────────────────────────────
+   OneSignal injects its own service worker logic when configured,
+   but this handles basic push events too so notifications work
+   even before OneSignal is fully wired up.
+──────────────────────────────────────────────────────────────── */
 self.addEventListener("push", (event) => {
-  if (!event.data) return;
+  let data = { title: "Maizu", body: "You have a new update.", url: "/" };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {
+    if (event.data) data.body = event.data.text();
+  }
 
-  const data = event.data.json();
+  const options = {
+    body:  data.body,
+    icon:  "/icons/icon-192x192.png",
+    badge: "/icons/icon-96x96.png",
+    data:  { url: data.url || "/" },
+    vibrate: [100, 50, 100],
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+/* ── NOTIFICATION CLICK: open the relevant page ─────────────── */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || "/";
 
   event.waitUntil(
-    self.registration.showNotification(data.title || "Maizu", {
-      body:    data.body    || "You have a new notification",
-      icon:    data.icon    || "/icons/icon-192x192.png",
-      badge:   data.badge   || "/icons/icon-72x72.png",
-      data:    data.url     || "/",
-      actions: data.actions || [],
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientsArr) => {
+      const existing = clientsArr.find((c) => c.url.includes(targetUrl));
+      if (existing) return existing.focus();
+      return self.clients.openWindow(targetUrl);
     })
   );
 });
 
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.openWindow(event.notification.data || "/")
-  );
+/* ── BACKGROUND SYNC (placeholder for future order queue) ───── */
+self.addEventListener("sync", (event) => {
+  if (event.tag === "maizu-sync-orders") {
+    /* Future: retry failed order submissions made while offline */
+    console.log("Background sync triggered: maizu-sync-orders");
+  }
 });
