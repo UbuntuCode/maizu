@@ -9,6 +9,7 @@ const {
   getAllStores,
   getStore,
   getMyStores,
+  becomeVendor,
   createStore,
   updateStore,
   deleteStore,
@@ -24,6 +25,12 @@ const storeUpload = upload.fields([
 // Public
 router.get("/",            getAllStores);
 router.get("/my/stores",   protect, getMyStores);
+
+// ⚠️ MUST come before router.put("/:id", ...) below —
+// otherwise Express treats "become-vendor" as an :id param
+// and this route never gets hit.
+router.put("/become-vendor", protect, becomeVendor);
+
 router.get("/:id",         getStore);
 
 // Protected

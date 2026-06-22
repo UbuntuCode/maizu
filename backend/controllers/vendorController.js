@@ -52,6 +52,32 @@ const getMyStores = async (req, res) => {
   res.status(200).json({ success: true, stores: result.rows });
 };
 
+/* ── BECOME A VENDOR ── PUT /api/vendors/become-vendor ──────── */
+/* Upgrades a buyer's role to vendor instantly, with no store
+   required yet. This is what /app/become-vendor/page.tsx calls
+   before sending the user to the store creation form.
+   NOTE: createStore() below also auto-upgrades on first store —
+   this endpoint exists so the role can flip BEFORE a store exists,
+   e.g. to unlock vendor-only UI immediately after tapping
+   "Become a Vendor". */
+const becomeVendor = async (req, res) => {
+  try {
+    const result = await query(
+      "UPDATE users SET role = 'vendor' WHERE id = $1 RETURNING id, full_name, email, role",
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    res.status(200).json({ success: true, user: result.rows[0], message: "You are now a vendor!" });
+  } catch (err) {
+    console.error("Become vendor error:", err.message);
+    res.status(500).json({ success: false, message: "Failed to update your account." });
+  }
+};
+
 /* ── CREATE STORE ── POST /api/vendors ──────────────────────── */
 const createStore = async (req, res) => {
   const { name, description, category, floor_location } = req.body;
@@ -78,7 +104,8 @@ const createStore = async (req, res) => {
     [req.user.id, name.trim(), description, category, floor_location, logo_url, banner_url]
   );
 
-  /* Auto-upgrade user to vendor when they create their first store */
+  /* Auto-upgrade user to vendor when they create their first store
+     (kept as a safety net even though /become-vendor already does this) */
   await query(
     "UPDATE users SET role = 'vendor' WHERE id = $1 AND role = 'buyer'",
     [req.user.id]
@@ -148,6 +175,7 @@ module.exports = {
   getAllStores,
   getStore,
   getMyStores,
+  becomeVendor,
   createStore,
   updateStore,
   deleteStore,

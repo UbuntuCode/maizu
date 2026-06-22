@@ -1,0 +1,40 @@
+/* ════════════════════════════════════════════════════════════
+   UPDATE frontend/app/profile/page.tsx
+
+   1. Find the "Open a store" / "Become a vendor" button.
+      It currently probably points to "/sell" or "/register".
+      Change it to point to the NEW working flow:
+════════════════════════════════════════════════════════════ */
+
+// OLD:
+// onClick={() => router.push("/sell")}
+
+// NEW:
+onClick={() => router.push("/become-vendor")}
+
+
+/* ════════════════════════════════════════════════════════════
+   2. Find the footer links array — it currently points
+      everything to "/" as a placeholder. Replace with:
+════════════════════════════════════════════════════════════ */
+
+const footerLinks = [
+  { label: "Privacy Policy",   path: "/privacy" },
+  { label: "Terms of Service", path: "/terms"   },
+  { label: "Help & Support",   path: "/help"    },
+  { label: "About Maizu",      path: "/about"   },
+];
+
+// Then map over them exactly as before:
+{footerLinks.map((item, i, arr) => (
+  <button
+    key={item.label}
+    onClick={() => router.push(item.path)}
+    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", borderBottom: i < arr.length - 1 ? "0.5px solid #E4E4E7" : "none" }}
+  >
+    <span style={{ fontSize: 13, color: "#0F0F0F" }}>{item.label}</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717A" strokeWidth="2">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  </button>
+))}
