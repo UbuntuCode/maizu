@@ -1,0 +1,87 @@
+/* ════════════════════════════════════════════════════════════
+   HOOK 1 — Buyer's first completed purchase
+   In backend/controllers/orderController.js, find where an
+   order status gets updated to 'confirmed' or 'delivered'
+   (likely in updateOrderStatus or the Flutterwave/PayFast
+   webhook handler). Add this check right after the order
+   is confirmed:
+════════════════════════════════════════════════════════════ */
+
+const { qualifyReferral } = require("./referralController");
+
+// ...inside your order confirmation logic, after order.status is set to 'confirmed':
+
+/* Check if this is the buyer's FIRST ever order */
+const orderCountResult = await query(
+  "SELECT COUNT(*) AS count FROM orders WHERE buyer_id = $1 AND status != 'cancelled'",
+  [order.buyer_id]
+);
+if (Number(orderCountResult.rows[0].count) === 1) {
+  /* This was their first order — qualify any pending referral */
+  await qualifyReferral(order.buyer_id, "buyer_first_purchase");
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   HOOK 2 — Vendor lists their 3rd product
+   In backend/controllers/productController.js, find the
+   createProduct function. Add this after a product is
+   successfully inserted:
+════════════════════════════════════════════════════════════ */
+
+const { qualifyReferral } = require("./referralController");
+
+// ...inside createProduct, after the INSERT succeeds:
+
+const productCountResult = await query(
+  "SELECT COUNT(*) AS count FROM products p JOIN stores s ON p.store_id = s.id WHERE s.owner_id = $1",
+  [req.user.id]
+);
+if (Number(productCountResult.rows[0].count) === 3) {
+  await qualifyReferral(req.user.id, "vendor_first_listing");
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   HOOK 3 — Vendor's first completed sale
+   Also in orderController.js, where order_items get processed
+   on order confirmation (you likely loop through items per
+   vendor). Add this per unique store_id in the order:
+════════════════════════════════════════════════════════════ */
+
+const vendorSaleCountResult = await query(
+  `SELECT COUNT(DISTINCT o.id) AS count
+   FROM orders o JOIN order_items oi ON oi.order_id = o.id
+   WHERE oi.store_id = $1 AND o.status != 'cancelled'`,
+  [item.store_id]
+);
+if (Number(vendorSaleCountResult.rows[0].count) === 1) {
+  const storeOwnerResult = await query("SELECT owner_id FROM stores WHERE id = $1", [item.store_id]);
+  if (storeOwnerResult.rows.length > 0) {
+    await qualifyReferral(storeOwnerResult.rows[0].owner_id, "vendor_first_sale");
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   HOOK 4 — Capture ?ref= code at registration
+   In frontend/app/register/page.tsx, after successful signup
+   (right after supabase.auth.signUp succeeds), call:
+════════════════════════════════════════════════════════════ */
+
+// Add to register page:
+const searchParams = useSearchParams(); // wrap page in Suspense if not already
+const refCode = searchParams.get("ref");
+
+// After successful signup + login:
+if (refCode) {
+  try {
+    const { data: sd } = await supabase.auth.getSession();
+    const token = sd.session?.access_token;
+    await fetch(`${BASE}/api/referrals/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ referral_code: refCode }),
+    });
+  } catch { /* non-critical, don't block registration on this */ }
+}
