@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
@@ -71,7 +71,11 @@ function DocUpload({ label, hint, value, onChange }: { label: string; hint: stri
   );
 }
 
-export default function VerifyAccountPage() {
+/* ══════════════════════════════════════════════════════════════
+   PAGE CONTENT — all logic lives here, this is what uses
+   useSearchParams() and must be inside <Suspense> below
+══════════════════════════════════════════════════════════════ */
+function VerifyAccountPageContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const storeId       = searchParams.get("store");
@@ -404,5 +408,17 @@ export default function VerifyAccountPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DEFAULT EXPORT — wraps content in Suspense
+   (fixes the "useSearchParams should be wrapped in suspense" build error)
+══════════════════════════════════════════════════════════════ */
+export default function VerifyAccountPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: BG }} />}>
+      <VerifyAccountPageContent />
+    </Suspense>
   );
 }
