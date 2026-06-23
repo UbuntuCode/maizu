@@ -72,7 +72,8 @@ const routeFiles = [
   { path: "/api/flutterwave",   file: "./routes/flutterwaveRoutes"  },
   { path: "/api/payfast",       file: "./routes/payfastRoutes"      },
   { path: "/api/verification", file: "./routes/verificationRoutes" },
-];{ path: "/api/referrals", file: "./routes/referralRoutes" },
+  { path: "/api/referrals",     file: "./routes/referralRoutes" },
+];
 
 routeFiles.forEach(({ path: routePath, file }) => {
   try {
