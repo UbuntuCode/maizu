@@ -254,7 +254,7 @@ function ProductsPageContent() {
             <div style={{ fontSize: 40, marginBottom: 12 }}>🏪</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: DARK, marginBottom: 6 }}>No store yet</div>
             <div style={{ fontSize: 12, color: MUTED, marginBottom: 20 }}>Open a store before adding products.</div>
-            <button onClick={() => router.push("/dashboard/stores/create")} style={{ background: P, color: "#fff", border: "none", borderRadius: 22, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => router.push("/dashboard/create-store")} style={{ background: P, color: "#fff", border: "none", borderRadius: 22, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
               Open a Store
             </button>
           </div>

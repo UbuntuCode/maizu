@@ -33,7 +33,7 @@ export default function BecomeVendorPage() {
 
   /* If already a vendor, skip straight to creating a store */
   useEffect(() => {
-    if (alreadyVendor) router.push("/dashboard/stores/create");
+    if (alreadyVendor) router.push("/dashboard/create-store");
   }, [alreadyVendor, router]);
 
   const handleBecomeVendor = async () => {

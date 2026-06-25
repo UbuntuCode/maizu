@@ -172,7 +172,7 @@ export default function DashboardStoresPage() {
           <div style={{ fontSize: 16, fontWeight: 800, color: C.dark }}>My Stores</div>
           <div style={{ fontSize: 11, color: C.gray }}>{stores.length} store{stores.length !== 1 ? "s" : ""}</div>
         </div>
-        <button onClick={() => router.push("/dashboard/stores/create")}
+        <button onClick={() => router.push("/dashboard/create-store")}
           style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
           + New Store
         </button>
