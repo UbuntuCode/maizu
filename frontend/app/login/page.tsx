@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase";
 import { useAuth } from "@/context/AuthContext";
 
@@ -19,8 +19,13 @@ const Eye = ({ show, toggle }: { show: boolean; toggle: () => void }) => (
   </button>
 );
 
-export default function LoginPage() {
+/* ══════════════════════════════════════════════════════════════
+   PAGE CONTENT — uses useSearchParams, must live inside Suspense
+══════════════════════════════════════════════════════════════ */
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "/";
   const { isLoggedIn } = useAuth();
 
   const [email,  setEmail]  = useState("");
@@ -31,7 +36,9 @@ export default function LoginPage() {
   const [forgot, setForgot] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  useEffect(() => { if (isLoggedIn) router.push("/"); }, [isLoggedIn, router]);
+  useEffect(() => {
+    if (isLoggedIn) router.push(nextPath);
+  }, [isLoggedIn, router, nextPath]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,9 +55,9 @@ export default function LoginPage() {
         throw authError;
       }
       /* Session persists automatically — Supabase stores it in localStorage */
-      router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Sign in failed.");
+      router.push(nextPath);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Sign in failed.");
     } finally {
       setBusy(false);
     }
@@ -66,8 +73,8 @@ export default function LoginPage() {
       });
       if (resetError) throw resetError;
       setResetSent(true);
-    } catch (err: any) {
-      setError(err.message || "Failed to send reset email.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to send reset email.");
     } finally {
       setBusy(false);
     }
@@ -164,12 +171,23 @@ export default function LoginPage() {
         {!forgot && (
           <div style={{ textAlign:"center", marginTop:24, fontSize:13, color:MUTED }}>
             Don&apos;t have an account?{" "}
-            <button onClick={() => router.push("/register")} style={{ background:"none", border:"none", color:P, fontWeight:700, cursor:"pointer", fontSize:13 }}>
+            <button onClick={() => router.push(`/register?next=${encodeURIComponent(nextPath)}`)} style={{ background:"none", border:"none", color:P, fontWeight:700, cursor:"pointer", fontSize:13 }}>
               Create one free
             </button>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DEFAULT EXPORT — wraps content in Suspense
+══════════════════════════════════════════════════════════════ */
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: BG }} />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

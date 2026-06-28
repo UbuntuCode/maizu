@@ -6,9 +6,9 @@ import BottomNav from "@/components/navigation/BottomNav";
 
 const BANK_DETAILS = {
   bank:           "First National Bank (FNB)",
-  account_name:   "Maizu Business Hub (Pty) Ltd",
-  account_number: "62812345678",
-  branch_code:    "250655",
+  account_name:   "UBUNTUCODE (Pty) Ltd",
+  account_number: "63173491762",
+  branch_code:    "220830",
   account_type:   "Cheque / Current",
 };
 

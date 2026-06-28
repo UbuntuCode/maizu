@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/navigation/BottomNav";
+import { useAuth } from "@/context/AuthContext";
 
 const P     = "#E8401C";
 const DARK  = "#0F0F0F";
@@ -48,7 +49,7 @@ function FAQItem({ q, a }: { q:string; a:string }) {
 }
 
 export default function SellPage() {
-  const router = useRouter();
+  const router = useRouter(); const { isLoggedIn } = useAuth();
 
   return (
     <div style={{ background:WHITE, minHeight:"100vh", paddingBottom:80 }}>
@@ -68,7 +69,7 @@ export default function SellPage() {
           <p style={{ fontSize:14, color:"rgba(255,255,255,0.7)", marginBottom:28, lineHeight:1.7, maxWidth:320, margin:"0 auto 28px" }}>
             Open your own online store on Maizu in 10 minutes. Accept card payments, track orders and grow your business — all from your phone.
           </p>
-          <button onClick={() => router.push("/register")} style={{ background:P, color:WHITE, border:"none", borderRadius:28, padding:"15px 32px", fontSize:16, fontWeight:800, cursor:"pointer", boxShadow:`0 8px 24px ${P}55` }}>
+          <button onClick={() => router.push(isLoggedIn ? "/become-vendor" : "/register?next=/become-vendor")} style={{ background:P, color:WHITE, border:"none", borderRadius:28, padding:"15px 32px", fontSize:16, fontWeight:800, cursor:"pointer", boxShadow:`0 8px 24px ${P}55` }}>
             Open Your Free Store
           </button>
           <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:12 }}>No monthly fee · No credit card needed</div>
@@ -121,7 +122,7 @@ export default function SellPage() {
             </div>
           </div>
         ))}
-        <button onClick={() => router.push("/register")} style={{ width:"100%", background:P, color:WHITE, border:"none", borderRadius:14, padding:"14px 0", fontSize:15, fontWeight:700, cursor:"pointer", marginTop:8 }}>
+        <button onClick={() => router.push(isLoggedIn ? "/become-vendor" : "/register?next=/become-vendor")} style={{ width:"100%", background:P, color:WHITE, border:"none", borderRadius:14, padding:"14px 0", fontSize:15, fontWeight:700, cursor:"pointer", marginTop:8 }}>
           Start in 10 Minutes
         </button>
       </div>
@@ -160,7 +161,7 @@ export default function SellPage() {
       <div style={{ background:`linear-gradient(160deg,${DARK},#2A1200)`, padding:"44px 20px", textAlign:"center" }}>
         <h2 style={{ fontSize:24, fontWeight:900, color:WHITE, marginBottom:10 }}>Ready to start selling?</h2>
         <p style={{ fontSize:13, color:"rgba(255,255,255,0.6)", marginBottom:28 }}>Join South African entrepreneurs selling on Maizu.</p>
-        <button onClick={() => router.push("/register")} style={{ background:P, color:WHITE, border:"none", borderRadius:28, padding:"15px 36px", fontSize:16, fontWeight:800, cursor:"pointer", boxShadow:`0 8px 24px ${P}55` }}>
+       <button onClick={() => router.push(isLoggedIn ? "/become-vendor" : "/register?next=/become-vendor")} style={{ background:P, color:WHITE, border:"none", borderRadius:28, padding:"15px 36px", fontSize:16, fontWeight:800, cursor:"pointer", boxShadow:`0 8px 24px ${P}55` }}>
           Open Your Free Store
         </button>
       </div>

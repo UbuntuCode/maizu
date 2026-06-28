@@ -1,7 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { C } from "@/utils/constants";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase";
 import { useAuth } from "@/context/AuthContext";
 
@@ -11,7 +10,6 @@ const MUTED = "#71717A";
 const BORDER = "#E4E4E7";
 const BG = "#F7F7F5";
 
-/* ── Password strength checker ─────────────────────────────── */
 interface StrengthResult {
   score:    0 | 1 | 2 | 3 | 4;
   label:    string;
@@ -44,7 +42,6 @@ const checkStrength = (pw: string): StrengthResult => {
   return { score: passed, label: scores[passed][0], color: scores[passed][1], checks };
 };
 
-/* ── Check rule item ────────────────────────────────────────── */
 const Rule = ({ ok, text }: { ok: boolean; text: string }) => (
   <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:ok?"#10B981":MUTED }}>
     <div style={{ width:14, height:14, borderRadius:"50%", background:ok?"#D1FAE5":"#F3F4F6", border:`1px solid ${ok?"#10B981":BORDER}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -54,7 +51,6 @@ const Rule = ({ ok, text }: { ok: boolean; text: string }) => (
   </div>
 );
 
-/* ── Eye toggle ─────────────────────────────────────────────── */
 const Eye = ({ show, toggle }: { show: boolean; toggle: () => void }) => (
   <button type="button" onClick={toggle} style={{ background:"none", border:"none", cursor:"pointer", padding:4, color:MUTED, display:"flex" }}>
     {show
@@ -64,8 +60,10 @@ const Eye = ({ show, toggle }: { show: boolean; toggle: () => void }) => (
   </button>
 );
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "/";
   const { isLoggedIn } = useAuth();
 
   const [form, setForm] = useState({ full_name:"", email:"", password:"", confirm:"" });
@@ -77,10 +75,9 @@ export default function RegisterPage() {
   const [agreed,  setAgreed]  = useState(false);
 
   useEffect(() => {
-    if (isLoggedIn) router.push("/");
-    /* Show onboarding to new visitors */
+    if (isLoggedIn) router.push(nextPath);
     if (!localStorage.getItem("maizu_onboarded")) router.push("/onboarding");
-  }, [isLoggedIn, router]);
+  }, [isLoggedIn, router, nextPath]);
 
   const strength = checkStrength(form.password);
   const isValid  = strength.score >= 3 && form.password === form.confirm && form.full_name.trim().length >= 2 && form.email.includes("@") && agreed;
@@ -104,14 +101,13 @@ export default function RegisterPage() {
         password: form.password,
         options: {
           data: { full_name: form.full_name.trim() },
-          /* Persistent session — stays signed in */
           emailRedirectTo: `${window.location.origin}/`,
         },
       });
       if (signUpError) throw signUpError;
       setStep("verify");
-    } catch (err: any) {
-      setError(err.message || "Registration failed. Please try again.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Registration failed. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -128,7 +124,7 @@ export default function RegisterPage() {
           <p style={{ fontSize:14, color:MUTED, lineHeight:1.7, marginBottom:28 }}>
             We sent a verification link to <strong style={{ color:DARK }}>{form.email}</strong>. Click the link to activate your account.
           </p>
-          <button onClick={() => router.push("/login")} style={{ width:"100%", background:P, color:"#fff", border:"none", borderRadius:14, padding:"14px 0", fontSize:15, fontWeight:700, cursor:"pointer" }}>
+          <button onClick={() => router.push(`/login?next=${encodeURIComponent(nextPath)}`)} style={{ width:"100%", background:P, color:"#fff", border:"none", borderRadius:14, padding:"14px 0", fontSize:15, fontWeight:700, cursor:"pointer" }}>
             Go to sign in
           </button>
         </div>
@@ -138,7 +134,6 @@ export default function RegisterPage() {
 
   return (
     <div style={{ minHeight:"100vh", background:BG, display:"flex", flexDirection:"column" }}>
-      {/* Header */}
       <div style={{ background:"#fff", padding:"16px 20px", borderBottom:`0.5px solid ${BORDER}`, display:"flex", alignItems:"center", gap:12 }}>
         <button onClick={() => router.back()} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={DARK} strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -147,10 +142,9 @@ export default function RegisterPage() {
       </div>
 
       <div style={{ flex:1, padding:"24px 20px 40px", maxWidth:440, width:"100%", margin:"0 auto" }}>
-        {/* Logo */}
         <div style={{ textAlign:"center", marginBottom:28 }}>
           <div style={{ fontSize:28, fontWeight:900 }}><span style={{ color:P }}>mai</span><span style={{ color:DARK }}>zu</span></div>
-          <div style={{ fontSize:12, color:MUTED, marginTop:2 }}>Join South Africa's marketplace</div>
+          <div style={{ fontSize:12, color:MUTED, marginTop:2 }}>Join South Africa&apos;s marketplace</div>
         </div>
 
         {error && (
@@ -160,22 +154,18 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleRegister} style={{ display:"flex", flexDirection:"column", gap:16 }}>
-
-          {/* Full name */}
           <div>
             <label style={{ fontSize:12, fontWeight:600, color:DARK, display:"block", marginBottom:6 }}>Full name</label>
             <input value={form.full_name} onChange={e => setForm(p => ({...p, full_name:e.target.value}))}
               placeholder="Sipho Dlamini" autoComplete="name" style={inp} />
           </div>
 
-          {/* Email */}
           <div>
             <label style={{ fontSize:12, fontWeight:600, color:DARK, display:"block", marginBottom:6 }}>Email address</label>
             <input value={form.email} onChange={e => setForm(p => ({...p, email:e.target.value}))}
               type="email" placeholder="sipho@email.com" autoComplete="email" style={inp} />
           </div>
 
-          {/* Password */}
           <div>
             <label style={{ fontSize:12, fontWeight:600, color:DARK, display:"block", marginBottom:6 }}>Password</label>
             <div style={{ position:"relative", display:"flex", alignItems:"center" }}>
@@ -185,7 +175,6 @@ export default function RegisterPage() {
               <div style={{ position:"absolute", right:10 }}><Eye show={showPw} toggle={() => setShowPw(s=>!s)} /></div>
             </div>
 
-            {/* Strength bar */}
             {form.password.length > 0 && (
               <div style={{ marginTop:8 }}>
                 <div style={{ height:3, background:"#F3F4F6", borderRadius:2, overflow:"hidden", marginBottom:6 }}>
@@ -206,7 +195,6 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* Confirm password */}
           <div>
             <label style={{ fontSize:12, fontWeight:600, color:DARK, display:"block", marginBottom:6 }}>Confirm password</label>
             <div style={{ position:"relative", display:"flex", alignItems:"center" }}>
@@ -220,7 +208,6 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* Terms */}
           <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
             <div onClick={() => setAgreed(a => !a)} style={{ width:20, height:20, borderRadius:5, border:`2px solid ${agreed?P:BORDER}`, background:agreed?P:"transparent", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginTop:1 }}>
               {agreed && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -238,11 +225,19 @@ export default function RegisterPage() {
 
         <div style={{ textAlign:"center", marginTop:20, fontSize:13, color:MUTED }}>
           Already have an account?{" "}
-          <button onClick={() => router.push("/login")} style={{ background:"none", border:"none", color:P, fontWeight:700, cursor:"pointer", fontSize:13 }}>
+          <button onClick={() => router.push(`/login?next=${encodeURIComponent(nextPath)}`)} style={{ background:"none", border:"none", color:P, fontWeight:700, cursor:"pointer", fontSize:13 }}>
             Sign in
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: BG }} />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

@@ -51,7 +51,7 @@ export default function BecomeVendorPage() {
       if (!data.success) throw new Error(data.message || "Could not update your account.");
 
       await refreshProfile();
-      router.push("/dashboard/stores/create");
+      router.push("/dashboard/create-store");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {

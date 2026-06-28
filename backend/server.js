@@ -73,6 +73,7 @@ const routeFiles = [
   { path: "/api/payfast",       file: "./routes/payfastRoutes"      },
   { path: "/api/verification", file: "./routes/verificationRoutes" },
   { path: "/api/referrals",     file: "./routes/referralRoutes" },
+  { path: "/api/payment", file: "./routes/paymentRoutes" },
 ];
 
 routeFiles.forEach(({ path: routePath, file }) => {

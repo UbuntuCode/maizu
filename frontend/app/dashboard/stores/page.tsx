@@ -184,7 +184,7 @@ export default function DashboardStoresPage() {
             <div style={{ fontSize: 40, marginBottom: 12 }}>🏪</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 6 }}>No stores yet</div>
             <div style={{ fontSize: 12, color: C.gray, marginBottom: 20 }}>Open your first store and start selling on Maizu.</div>
-            <button onClick={() => router.push("/dashboard/stores/create")}
+            <button onClick={() => router.push("/dashboard/create-store")}
               style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 22, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
               Open a Store
             </button>
