@@ -1,10 +1,10 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { C } from "@/utils/constants";
 import BottomNav from "@/components/navigation/BottomNav";
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const orderId      = searchParams.get("order_id");
@@ -85,5 +85,14 @@ export default function PaymentSuccessPage() {
 
       <BottomNav />
     </div>
+  );
+}
+
+/* DEFAULT EXPORT — wraps content in Suspense */
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: C.bg }} />}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
-import React from "react";
+import React, { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { C } from "@/utils/constants";
 import BottomNav from "@/components/navigation/BottomNav";
 
-export default function PaymentCancelPage() {
+function PaymentCancelContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const orderId      = searchParams.get("order_id");
@@ -47,5 +47,14 @@ export default function PaymentCancelPage() {
 
       <BottomNav />
     </div>
+  );
+}
+
+/* DEFAULT EXPORT — wraps content in Suspense */
+export default function PaymentCancelPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: C.bg }} />}>
+      <PaymentCancelContent />
+    </Suspense>
   );
 }

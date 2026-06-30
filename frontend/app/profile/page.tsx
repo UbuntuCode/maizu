@@ -329,10 +329,10 @@ export default function ProfilePage() {
       <div style={{ padding: "0 16px 20px" }}>
         <div style={{ background: WHITE, borderRadius: 14, overflow: "hidden", border: `0.5px solid ${BORDER}` }}>
           {[
-            { label: "Privacy Policy",   path: "/" },
-            { label: "Terms of Service", path: "/" },
-            { label: "Help & Support",   path: "/" },
-            { label: "About Maizu",      path: "/sell" },
+            { label: "Privacy Policy",   path: "/privacy" },
+            { label: "Terms of Service", path: "/terms" },
+            { label: "Help & Support",   path: "/support" },
+            { label: "About Maizu",      path: "/about" },
           ].map((item, i, arr) => (
             <button
               key={item.label}
