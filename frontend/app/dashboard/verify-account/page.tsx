@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -24,7 +24,6 @@ const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 
 
 interface Owner { full_name: string; id_number: string; address: string; date_of_birth: string; ownership_pct: string; }
 
-/* ── Document upload field ─────────────────────────────────── */
 function DocUpload({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (url: string) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -71,10 +70,6 @@ function DocUpload({ label, hint, value, onChange }: { label: string; hint: stri
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PAGE CONTENT — all logic lives here, this is what uses
-   useSearchParams() and must be inside <Suspense> below
-══════════════════════════════════════════════════════════════ */
 function VerifyAccountPageContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -87,14 +82,12 @@ function VerifyAccountPageContent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  /* Personal fields */
   const [fullLegalName, setFullLegalName] = useState("");
   const [idNumber,       setIdNumber]      = useState("");
   const [dob,            setDob]           = useState("");
   const [resAddress,     setResAddress]    = useState("");
   const [phone,          setPhone]         = useState("");
 
-  /* Business fields */
   const [legalBizName,   setLegalBizName]  = useState("");
   const [tradeName,      setTradeName]     = useState("");
   const [cipcNumber,     setCipcNumber]    = useState("");
@@ -103,14 +96,12 @@ function VerifyAccountPageContent() {
   const [bizPhone,       setBizPhone]      = useState("");
   const [owners,         setOwners]        = useState<Owner[]>([{ full_name: "", id_number: "", address: "", date_of_birth: "", ownership_pct: "" }]);
 
-  /* Banking — shared */
   const [bankName,    setBankName]    = useState("");
   const [accHolder,   setAccHolder]   = useState("");
   const [accNumber,   setAccNumber]   = useState("");
   const [branchCode,  setBranchCode]  = useState("");
   const [accType,     setAccType]     = useState("savings");
 
-  /* Documents */
   const [idDoc,        setIdDoc]        = useState("");
   const [addressDoc,   setAddressDoc]   = useState("");
   const [bankDoc,       setBankDoc]      = useState("");
@@ -164,10 +155,10 @@ function VerifyAccountPageContent() {
   if (success) {
     return (
       <div style={{ minHeight: "100vh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
-        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#D1FAE5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, marginBottom: 18 }}>✅</div>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#D1FAE5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, marginBottom: 18 }}>&#9989;</div>
         <div style={{ fontSize: 19, fontWeight: 800, color: DARK, marginBottom: 8 }}>Verification submitted</div>
         <div style={{ fontSize: 13, color: MUTED, maxWidth: 300, lineHeight: 1.6, marginBottom: 24 }}>
-          Most accounts are reviewed within 1–2 business days. We&apos;ll notify you once it&apos;s complete — you can keep listing products in the meantime.
+          Most accounts are reviewed within 1&ndash;2 business days. We&apos;ll notify you once it&apos;s complete &mdash; you can keep listing products in the meantime.
         </div>
         <button onClick={() => router.push("/dashboard")} style={{ background: P, color: "#fff", border: "none", borderRadius: 22, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
           Back to Dashboard
@@ -179,7 +170,7 @@ function VerifyAccountPageContent() {
   return (
     <div style={{ background: BG, minHeight: "100vh", paddingBottom: 100 }}>
       <div style={{ background: WHITE, padding: "14px 16px", borderBottom: `1px solid ${BORDER}`, display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 100 }}>
-        <button onClick={() => step > 1 ? setStep(s => (s - 1) as any) : router.back()} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+        <button onClick={() => step > 1 ? setStep(s => (s - 1) as 1 | 2 | 3) : router.back()} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={DARK} strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <div>
@@ -188,7 +179,6 @@ function VerifyAccountPageContent() {
         </div>
       </div>
 
-      {/* Progress */}
       <div style={{ display: "flex", gap: 6, padding: "16px 16px 0" }}>
         {[1, 2, 3].map(s => (
           <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: s <= step ? P : BORDER, transition: "background 0.3s" }} />
@@ -198,11 +188,10 @@ function VerifyAccountPageContent() {
       <div style={{ padding: "16px" }}>
         {error && (
           <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#991B1B" }}>
-            ⚠️ {error}
+            &#9888;&#65039; {error}
           </div>
         )}
 
-        {/* ── STEP 1: ACCOUNT TYPE ── */}
         {step === 1 && (
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 6 }}>How are you selling?</div>
@@ -210,13 +199,14 @@ function VerifyAccountPageContent() {
 
             <button onClick={() => setAccountType("personal")}
               style={{ width: "100%", textAlign: "left", background: accountType === "personal" ? SOFT : WHITE, border: `2px solid ${accountType === "personal" ? P : BORDER}`, borderRadius: 16, padding: "18px", marginBottom: 12, cursor: "pointer" }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>&#128100;</div>
               <div style={{ fontSize: 15, fontWeight: 700, color: DARK, marginBottom: 4 }}>Personal Seller</div>
-              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>You&apos;re an individual selling as yourself — crafts, second-hand items, a side hustle. Requires your SA ID and proof of address.</div>
+              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>You&apos;re an individual selling as yourself &mdash; crafts, second-hand items, a side hustle. Requires your SA ID and proof of address.</div>
+            </button>
 
             <button onClick={() => setAccountType("business")}
               style={{ width: "100%", textAlign: "left", background: accountType === "business" ? SOFT : WHITE, border: `2px solid ${accountType === "business" ? P : BORDER}`, borderRadius: 16, padding: "18px", marginBottom: 20, cursor: "pointer" }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>🏢</div>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>&#127970;</div>
               <div style={{ fontSize: 15, fontWeight: 700, color: DARK, marginBottom: 4 }}>Registered Business</div>
               <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>You operate as a company, CC or sole proprietor with CIPC registration. Requires business documents and beneficial owner details.</div>
             </button>
@@ -228,7 +218,6 @@ function VerifyAccountPageContent() {
           </div>
         )}
 
-        {/* ── STEP 2: DETAILS ── */}
         {step === 2 && accountType === "personal" && (
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 16 }}>Your Details</div>
@@ -290,7 +279,6 @@ function VerifyAccountPageContent() {
               <input value={bizPhone} onChange={e => setBizPhone(e.target.value)} placeholder="011 234 5678" style={inputStyle} />
             </div>
 
-            {/* Beneficial owners */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: DARK, marginBottom: 4 }}>Beneficial Owners</div>
               <div style={{ fontSize: 11, color: MUTED, marginBottom: 12 }}>List anyone who owns more than 25% of the company.</div>
@@ -324,15 +312,14 @@ function VerifyAccountPageContent() {
           </div>
         )}
 
-        {/* ── STEP 3: BANKING + DOCUMENTS ── */}
         {step === 3 && (
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 16 }}>Banking & Documents</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 16 }}>Banking &amp; Documents</div>
 
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>Bank Name *</label>
               <select value={bankName} onChange={e => setBankName(e.target.value)} style={inputStyle}>
-                <option value="">Select your bank…</option>
+                <option value="">Select your bank&hellip;</option>
                 {["FNB", "Standard Bank", "Absa", "Nedbank", "Capitec", "TymeBank", "Investec", "Bidvest Bank"].map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
@@ -361,7 +348,7 @@ function VerifyAccountPageContent() {
             <div style={{ height: 1, background: BORDER, marginBottom: 20 }} />
 
             <div style={{ fontSize: 13, fontWeight: 700, color: DARK, marginBottom: 4 }}>Required Documents</div>
-            <div style={{ fontSize: 11, color: MUTED, marginBottom: 16 }}>We may not need all of these — but uploading them now speeds up your review.</div>
+            <div style={{ fontSize: 11, color: MUTED, marginBottom: 16 }}>We may not need all of these &mdash; but uploading them now speeds up your review.</div>
 
             <DocUpload
               label="Government-Issued Photo ID"
@@ -401,7 +388,7 @@ function VerifyAccountPageContent() {
 
             <button onClick={handleSubmit} disabled={busy || !canSubmit}
               style={{ width: "100%", background: (busy || !canSubmit) ? "#D1D5DB" : P, color: "#fff", border: "none", borderRadius: 14, padding: "16px 0", fontSize: 15, fontWeight: 700, cursor: (busy || !canSubmit) ? "default" : "pointer" }}>
-              {busy ? "Submitting…" : "Submit for Verification"}
+              {busy ? "Submitting&hellip;" : "Submit for Verification"}
             </button>
           </div>
         )}
@@ -410,10 +397,6 @@ function VerifyAccountPageContent() {
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   DEFAULT EXPORT — wraps content in Suspense
-   (fixes the "useSearchParams should be wrapped in suspense" build error)
-══════════════════════════════════════════════════════════════ */
 export default function VerifyAccountPage() {
   return (
     <Suspense fallback={<div style={{ minHeight: "100vh", background: BG }} />}>

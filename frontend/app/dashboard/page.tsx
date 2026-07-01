@@ -1,255 +1,424 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
 
-/*
-  Vendor Dashboard — full redesign.
-  Light, professional layout: greeting band, live stat cards,
-  quick actions and the vendor's stores. No emojis, SVG icons only.
-*/
+const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const CLOUD_NAME    = "ddjf6z9dv";
+const UPLOAD_PRESET = "maizu_unsigned";
 
-const T = {
-  primary: "#E8401C",
-  primarySoft: "#FDEAE4",
-  ink: "#161B26",
-  sub: "#6B7080",
-  faint: "#9CA1AD",
-  bg: "#F7F7F5",
-  card: "#FFFFFF",
-  border: "#ECECEA",
-  green: "#0F9D58",
-  greenSoft: "#E6F4EC",
+const P     = "#E8401C";
+const DARK  = "#0F0F0F";
+const MUTED = "#71717A";
+const BG    = "#F7F7F5";
+const WHITE = "#FFFFFF";
+const BORDER= "#E4E4E7";
+const SOFT  = "#FFF3EF";
+
+const inputStyle: React.CSSProperties = {
+  width: "100%", padding: "12px 14px", border: `1.5px solid ${BORDER}`, borderRadius: 11,
+  fontSize: 14, outline: "none", color: DARK, boxSizing: "border-box", background: "#FAFAFA",
 };
+const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: DARK, display: "block", marginBottom: 6 };
 
-function Ic({ d, size = 20, color = "currentColor" }: { d: React.ReactNode; size?: number; color?: string }) {
+interface Owner { full_name: string; id_number: string; address: string; date_of_birth: string; ownership_pct: string; }
+
+/* ── Document upload field ──────────────────────────────── */
+function DocUpload({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (url: string) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      const res  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: formData });
+      const data = await res.json();
+      onChange(data.secure_url);
+    } catch { /* silent */ }
+    finally { setUploading(false); }
+  };
+
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
-  );
-}
-const P = {
-  store:  <><path d="M3 9 4.5 4h15L21 9" /><path d="M4 9v11h16V9" /><path d="M9 20v-6h6v6" /></>,
-  box:    <><path d="m21 8-9-5-9 5 9 5 9-5Z" /><path d="M3 8v8l9 5 9-5V8" /><path d="M12 13v8" /></>,
-  orders: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
-  cash:   <><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 12h.01M18 12h.01" /></>,
-  plus:   <path d="M12 5v14M5 12h14" />,
-  chart:  <path d="M4 20V10M10 20V4M16 20v-8M21 20H3" />,
-  arrow:  <path d="M5 12h14m-6-6 6 6-6 6" />,
-};
-
-export default function VendorDashboard() {
-  const router = useRouter();
-  const { authUser, profile } = useAuth() as any;
-
-  const [stores, setStores]     = useState<any[]>([]);
-  const [stats, setStats]       = useState({ products: 0, orders: 0, revenue: 0 });
-  const [loading, setLoading]   = useState(true);
-
-  useEffect(() => {
-    if (!authUser) return;
-    (async () => {
-      try {
-        const { data: st } = await supabase
-          .from("stores").select("*").eq("owner_id", authUser.id)
-          .order("created_at", { ascending: false });
-        const myStores = st || [];
-        setStores(myStores);
-
-        if (myStores.length) {
-          const ids = myStores.map((s: any) => s.id);
-
-          const { count: pCount } = await supabase
-            .from("products").select("id", { count: "exact", head: true })
-            .in("store_id", ids);
-
-          const { data: items } = await supabase
-            .from("order_items").select("order_id, subtotal").in("store_id", ids);
-
-          const orderIds = new Set((items || []).map((i: any) => i.order_id));
-          const revenue  = (items || []).reduce((s: number, i: any) => s + Number(i.subtotal || 0), 0);
-
-          setStats({ products: pCount || 0, orders: orderIds.size, revenue });
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [authUser]);
-
-  const fmtR = (n: number) =>
-    "R " + n.toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-
-  const firstName = (profile?.full_name || "Vendor").split(" ")[0];
-
-  const StatCard = ({ icon, label, value, tint, tintBg }: any) => (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`, borderRadius: 16,
-      padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, minWidth: 0,
-    }}>
-      <div style={{
-        width: 44, height: 44, borderRadius: 12, background: tintBg,
-        display: "flex", alignItems: "center", justifyContent: "center", color: tint, flexShrink: 0,
-      }}>
-        <Ic d={icon} />
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: T.faint }}>{label}</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: T.ink, letterSpacing: -0.4 }}>
-          {loading ? "—" : value}
+    <div style={{ marginBottom: 14 }}>
+      <label style={labelStyle}>{label} *</label>
+      <div style={{ fontSize: 11, color: MUTED, marginBottom: 8 }}>{hint}</div>
+      {value ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#F0FDF4", border: "1.5px solid #86EFAC", borderRadius: 11, padding: "10px 14px" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <span style={{ fontSize: 12, color: "#065F46", flex: 1 }}>Document uploaded</span>
+          <button onClick={() => fileRef.current?.click()} style={{ background: "none", border: "none", color: "#059669", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Replace</button>
         </div>
-      </div>
+      ) : (
+        <button onClick={() => fileRef.current?.click()} disabled={uploading}
+          style={{ width: "100%", border: `1.5px dashed ${BORDER}`, borderRadius: 11, padding: "16px", background: "#FAFAFA", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          {uploading ? (
+            <div style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${P}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />
+          ) : (
+            <>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span style={{ fontSize: 12, color: MUTED }}>Tap to upload (PDF, JPG or PNG)</span>
+            </>
+          )}
+        </button>
+      )}
+      <input ref={fileRef} type="file" accept="image/*,.pdf" style={{ display: "none" }} onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
+}
 
-  const Action = ({ icon, title, desc, onClick, primary }: any) => (
-    <button onClick={onClick} className="mzd-action" style={{
-      display: "flex", alignItems: "center", gap: 14, textAlign: "left", width: "100%",
-      background: primary ? T.primary : T.card,
-      border: primary ? "none" : `1px solid ${T.border}`,
-      borderRadius: 16, padding: "16px 18px", cursor: "pointer",
-    }}>
-      <div style={{
-        width: 40, height: 40, borderRadius: 11, flexShrink: 0,
-        background: primary ? "rgba(255,255,255,.18)" : T.primarySoft,
-        color: primary ? "#fff" : T.primary,
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        <Ic d={icon} size={19} />
+/* ══════════════════════════════════════════════════════════════
+   PAGE CONTENT — all logic lives here, this is what uses
+   useSearchParams() and must be inside <Suspense> below
+══════════════════════════════════════════════════════════════ */
+function VerifyAccountPageContent() {
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const storeId       = searchParams.get("store");
+  const { isLoggedIn, loading: authLoading } = useAuth();
+
+  const [accountType, setAccountType] = useState<"personal" | "business" | null>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  /* Personal fields */
+  const [fullLegalName, setFullLegalName] = useState("");
+  const [idNumber,       setIdNumber]      = useState("");
+  const [dob,            setDob]           = useState("");
+  const [resAddress,     setResAddress]    = useState("");
+  const [phone,          setPhone]         = useState("");
+
+  /* Business fields */
+  const [legalBizName,   setLegalBizName]  = useState("");
+  const [tradeName,      setTradeName]     = useState("");
+  const [cipcNumber,     setCipcNumber]    = useState("");
+  const [vatNumber,      setVatNumber]     = useState("");
+  const [bizAddress,     setBizAddress]    = useState("");
+  const [bizPhone,       setBizPhone]      = useState("");
+  const [owners,         setOwners]        = useState<Owner[]>([{ full_name: "", id_number: "", address: "", date_of_birth: "", ownership_pct: "" }]);
+
+  /* Banking — shared */
+  const [bankName,    setBankName]    = useState("");
+  const [accHolder,   setAccHolder]   = useState("");
+  const [accNumber,   setAccNumber]   = useState("");
+  const [branchCode,  setBranchCode]  = useState("");
+  const [accType,     setAccType]     = useState("savings");
+
+  /* Documents */
+  const [idDoc,        setIdDoc]        = useState("");
+  const [addressDoc,   setAddressDoc]   = useState("");
+  const [bankDoc,       setBankDoc]      = useState("");
+  const [cipcDoc,       setCipcDoc]      = useState("");
+  const [vatDoc,         setVatDoc]       = useState("");
+
+  const addOwner    = () => setOwners(prev => [...prev, { full_name: "", id_number: "", address: "", date_of_birth: "", ownership_pct: "" }]);
+  const removeOwner = (i: number) => setOwners(prev => prev.filter((_, idx) => idx !== i));
+  const updateOwner = (i: number, field: keyof Owner, value: string) =>
+    setOwners(prev => prev.map((o, idx) => idx === i ? { ...o, [field]: value } : o));
+
+  const getToken = async () => { const { data } = await supabase.auth.getSession(); return data.session?.access_token; };
+
+  const canContinueStep1 = accountType !== null;
+  const canContinueStep2 = accountType === "personal"
+    ? fullLegalName.trim() && idNumber.trim() && resAddress.trim() && phone.trim()
+    : legalBizName.trim() && cipcNumber.trim() && bizAddress.trim() && bizPhone.trim();
+  const canSubmit = idDoc && addressDoc && bankDoc && accNumber.trim() && bankName.trim();
+
+  const handleSubmit = async () => {
+    if (!canSubmit) { setError("Please complete all required fields and upload all required documents."); return; }
+    setBusy(true); setError("");
+    try {
+      const token = await getToken();
+      const res = await fetch(`${BASE}/api/verification/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          store_id: storeId, account_type: accountType,
+          full_legal_name: fullLegalName, id_number: idNumber, date_of_birth: dob, residential_address: resAddress, phone_number: phone,
+          legal_business_name: legalBizName, trade_name: tradeName, cipc_registration_number: cipcNumber, vat_number: vatNumber,
+          business_address: bizAddress, business_phone: bizPhone,
+          beneficial_owners: accountType === "business" ? owners.filter(o => o.full_name.trim()) : [],
+          bank_name: bankName, bank_account_holder: accHolder, bank_account_number: accNumber, bank_branch_code: branchCode, bank_account_type: accType,
+          id_document_url: idDoc, proof_of_address_url: addressDoc, bank_confirmation_url: bankDoc, cipc_document_url: cipcDoc, vat_certificate_url: vatDoc,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      setSuccess(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to submit verification.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (authLoading) return null;
+  if (!isLoggedIn) { router.push("/login"); return null; }
+
+  if (success) {
+    return (
+      <div style={{ minHeight: "100vh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#D1FAE5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, marginBottom: 18 }}>✅</div>
+        <div style={{ fontSize: 19, fontWeight: 800, color: DARK, marginBottom: 8 }}>Verification submitted</div>
+        <div style={{ fontSize: 13, color: MUTED, maxWidth: 300, lineHeight: 1.6, marginBottom: 24 }}>
+          Most accounts are reviewed within 1–2 business days. We&apos;ll notify you once it&apos;s complete — you can keep listing products in the meantime.
+        </div>
+        <button onClick={() => router.push("/dashboard")} style={{ background: P, color: "#fff", border: "none", borderRadius: 22, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          Back to Dashboard
+        </button>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14.5, fontWeight: 700, color: primary ? "#fff" : T.ink }}>{title}</div>
-        <div style={{ fontSize: 12.5, color: primary ? "rgba(255,255,255,.85)" : T.sub, marginTop: 2 }}>{desc}</div>
-      </div>
-      <Ic d={P.arrow} size={17} color={primary ? "#fff" : T.faint} />
-    </button>
-  );
+    );
+  }
 
   return (
-    <div style={{ minHeight: "100vh", background: T.bg }}>
-      <style>{`
-        .mzd-action{ transition: transform .12s ease, box-shadow .12s ease; }
-        .mzd-action:hover{ transform: translateY(-1px); box-shadow: 0 6px 18px rgba(22,27,38,.07); }
-        .mzd-grid4{ display:grid; grid-template-columns: repeat(4,1fr); gap:14px; }
-        .mzd-grid3{ display:grid; grid-template-columns: repeat(3,1fr); gap:14px; }
-        @media (max-width: 980px){ .mzd-grid4{ grid-template-columns: repeat(2,1fr);} .mzd-grid3{ grid-template-columns: 1fr;} }
-        @media (max-width: 520px){ .mzd-grid4{ grid-template-columns: 1fr 1fr;} }
-      `}</style>
+    <div style={{ background: BG, minHeight: "100vh", paddingBottom: 100 }}>
+      <div style={{ background: WHITE, padding: "14px 16px", borderBottom: `1px solid ${BORDER}`, display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 100 }}>
+        <button onClick={() => step > 1 ? setStep(s => (s - 1) as 1 | 2 | 3) : router.back()} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={DARK} strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: DARK }}>Verify Your Account</div>
+          <div style={{ fontSize: 11, color: MUTED }}>Required to receive payouts</div>
+        </div>
+      </div>
 
-      <div style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 20px 60px" }}>
+      {/* Progress */}
+      <div style={{ display: "flex", gap: 6, padding: "16px 16px 0" }}>
+        {[1, 2, 3].map(s => (
+          <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: s <= step ? P : BORDER, transition: "background 0.3s" }} />
+        ))}
+      </div>
 
-        {/* Greeting band */}
-        <div style={{
-          background: T.ink, borderRadius: 20, padding: "26px 26px",
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
-          backgroundImage: "radial-gradient(circle at 88% 0%, rgba(232,64,28,.35), transparent 46%)",
-        }}>
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,.55)" }}>
-              VENDOR DASHBOARD
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", marginTop: 6, letterSpacing: -0.4 }}>
-              Welcome back, {firstName}
-            </div>
-            <div style={{ fontSize: 13.5, color: "rgba(255,255,255,.7)", marginTop: 4 }}>
-              Here is how your business is doing on Maizu today.
-            </div>
+      <div style={{ padding: "16px" }}>
+        {error && (
+          <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#991B1B" }}>
+            ⚠️ {error}
           </div>
-          <button
-            onClick={() => router.push("/dashboard/create-product")}
-            style={{
-              display: "flex", alignItems: "center", gap: 8, background: T.primary, color: "#fff",
-              border: "none", borderRadius: 12, padding: "12px 18px", fontSize: 14, fontWeight: 700,
-              cursor: "pointer", whiteSpace: "nowrap",
-            }}
-          >
-            <Ic d={P.plus} size={17} /> Add product
-          </button>
-        </div>
+        )}
 
-        {/* Stats */}
-        <div className="mzd-grid4" style={{ marginTop: 18 }}>
-          <StatCard icon={P.store}  label="Stores"        value={stores.length}  tint={T.primary} tintBg={T.primarySoft} />
-          <StatCard icon={P.box}    label="Products"      value={stats.products} tint="#2563EB"   tintBg="#E8EFFD" />
-          <StatCard icon={P.orders} label="Orders"        value={stats.orders}   tint="#7C3AED"   tintBg="#F1EAFD" />
-          <StatCard icon={P.cash}   label="Total sales"   value={fmtR(stats.revenue)} tint={T.green} tintBg={T.greenSoft} />
-        </div>
+        {/* ── STEP 1: ACCOUNT TYPE ── */}
+        {step === 1 && (
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 6 }}>How are you selling?</div>
+            <div style={{ fontSize: 12, color: MUTED, marginBottom: 18 }}>This determines what information we&apos;ll need from you.</div>
 
-        {/* Quick actions */}
-        <div style={{ fontSize: 16, fontWeight: 800, color: T.ink, margin: "26px 0 12px" }}>Quick actions</div>
-        <div className="mzd-grid3">
-          <Action primary icon={P.plus} title="Add a product" desc="List something new in one of your stores"
-            onClick={() => router.push("/dashboard/create-product")} />
-          <Action icon={P.orders} title="Manage orders" desc="Confirm, ship and track customer orders"
-            onClick={() => router.push("/dashboard/orders")} />
-          <Action icon={P.chart} title="View analytics" desc="Sales, views and performance over time"
-            onClick={() => router.push("/dashboard/analytics")} />
-        </div>
+            <button onClick={() => setAccountType("personal")}
+              style={{ width: "100%", textAlign: "left", background: accountType === "personal" ? SOFT : WHITE, border: `2px solid ${accountType === "personal" ? P : BORDER}`, borderRadius: 16, padding: "18px", marginBottom: 12, cursor: "pointer" }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: DARK, marginBottom: 4 }}>Personal Seller</div>
+              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>You&apos;re an individual selling as yourself — crafts, second-hand items, a side hustle. Requires your SA ID and proof of address.</div>
+            </button>
 
-        {/* Stores */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "26px 0 12px" }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: T.ink }}>Your stores</div>
-          <button
-            onClick={() => router.push("/dashboard/create-store")}
-            style={{ background: "none", border: "none", color: T.primary, fontSize: 13.5, fontWeight: 700, cursor: "pointer" }}
-          >
-            + Open new store
-          </button>
-        </div>
+            <button onClick={() => setAccountType("business")}
+              style={{ width: "100%", textAlign: "left", background: accountType === "business" ? SOFT : WHITE, border: `2px solid ${accountType === "business" ? P : BORDER}`, borderRadius: 16, padding: "18px", marginBottom: 20, cursor: "pointer" }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>🏢</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: DARK, marginBottom: 4 }}>Registered Business</div>
+              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>You operate as a company, CC or sole proprietor with CIPC registration. Requires business documents and beneficial owner details.</div>
+            </button>
 
-        {loading ? (
-          <div style={{ color: T.sub, fontSize: 14, padding: 20 }}>Loading your stores…</div>
-        ) : stores.length === 0 ? (
-          <div style={{
-            background: T.card, border: `1px dashed #D8D8D4`, borderRadius: 18,
-            padding: "44px 20px", textAlign: "center",
-          }}>
-            <div style={{ display: "inline-flex", width: 56, height: 56, borderRadius: 16, background: T.primarySoft, color: T.primary, alignItems: "center", justifyContent: "center" }}>
-              <Ic d={P.store} size={26} />
-            </div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: T.ink, marginTop: 14 }}>You have no store yet</div>
-            <div style={{ fontSize: 13.5, color: T.sub, marginTop: 6 }}>
-              Open your first store and start selling across South Africa in minutes.
-            </div>
-            <button
-              onClick={() => router.push("/dashboard/create-store")}
-              style={{ marginTop: 18, background: T.primary, color: "#fff", border: "none", borderRadius: 12, padding: "12px 26px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
-            >
-              Open your store
+            <button onClick={() => canContinueStep1 && setStep(2)} disabled={!canContinueStep1}
+              style={{ width: "100%", background: canContinueStep1 ? P : "#D1D5DB", color: "#fff", border: "none", borderRadius: 14, padding: "15px 0", fontSize: 15, fontWeight: 700, cursor: canContinueStep1 ? "pointer" : "default" }}>
+              Continue
             </button>
           </div>
-        ) : (
-          <div style={{ display: "grid", gap: 12 }}>
-            {stores.map((s) => (
-              <div key={s.id} className="mzd-action"
-                onClick={() => router.push(`/dashboard/stores/${s.id}`)}
-                style={{
-                  background: T.card, border: `1px solid ${T.border}`, borderRadius: 16,
-                  padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer",
-                }}
-              >
-                {s.logo_url ? (
-                  <img src={s.logo_url} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
-                ) : (
-                  <div style={{ width: 48, height: 48, borderRadius: 12, background: T.primarySoft, color: T.primary, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 18, flexShrink: 0 }}>
-                    {(s.name || "S").charAt(0).toUpperCase()}
+        )}
+
+        {/* ── STEP 2: DETAILS ── */}
+        {step === 2 && accountType === "personal" && (
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 16 }}>Your Details</div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Full Legal Name *</label>
+              <input value={fullLegalName} onChange={e => setFullLegalName(e.target.value)} placeholder="As it appears on your ID" style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>South African ID Number *</label>
+              <input value={idNumber} onChange={e => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} placeholder="13-digit ID number" style={{ ...inputStyle, fontFamily: "monospace" }} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Date of Birth</label>
+              <input type="date" value={dob} onChange={e => setDob(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Residential Address *</label>
+              <textarea value={resAddress} onChange={e => setResAddress(e.target.value)} placeholder="Street, suburb, city, province, postal code" rows={3} style={{ ...inputStyle, resize: "none" }} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>Phone Number *</label>
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="071 234 5678" style={inputStyle} />
+            </div>
+
+            <button onClick={() => canContinueStep2 && setStep(3)} disabled={!canContinueStep2}
+              style={{ width: "100%", background: canContinueStep2 ? P : "#D1D5DB", color: "#fff", border: "none", borderRadius: 14, padding: "15px 0", fontSize: 15, fontWeight: 700, cursor: canContinueStep2 ? "pointer" : "default" }}>
+              Continue
+            </button>
+          </div>
+        )}
+
+        {step === 2 && accountType === "business" && (
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 16 }}>Business Details</div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Legal Business Name *</label>
+              <input value={legalBizName} onChange={e => setLegalBizName(e.target.value)} placeholder="As registered with CIPC" style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Trade Name (if different)</label>
+              <input value={tradeName} onChange={e => setTradeName(e.target.value)} placeholder="e.g. trading as 'Maizu Crafts'" style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>CIPC Registration Number *</label>
+              <input value={cipcNumber} onChange={e => setCipcNumber(e.target.value)} placeholder="e.g. 2021/123456/07" style={{ ...inputStyle, fontFamily: "monospace" }} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>VAT Number <span style={{ color: MUTED, fontWeight: 400 }}>(optional)</span></label>
+              <input value={vatNumber} onChange={e => setVatNumber(e.target.value)} placeholder="SARS VAT number" style={{ ...inputStyle, fontFamily: "monospace" }} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Official Business Address *</label>
+              <textarea value={bizAddress} onChange={e => setBizAddress(e.target.value)} placeholder="Street, suburb, city, province, postal code" rows={3} style={{ ...inputStyle, resize: "none" }} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>Business Phone Number *</label>
+              <input value={bizPhone} onChange={e => setBizPhone(e.target.value)} placeholder="011 234 5678" style={inputStyle} />
+            </div>
+
+            {/* Beneficial owners */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: DARK, marginBottom: 4 }}>Beneficial Owners</div>
+              <div style={{ fontSize: 11, color: MUTED, marginBottom: 12 }}>List anyone who owns more than 25% of the company.</div>
+
+              {owners.map((owner, i) => (
+                <div key={i} style={{ background: "#F9FAFB", borderRadius: 12, padding: "14px", marginBottom: 10, border: `1px solid ${BORDER}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: DARK }}>Owner {i + 1}</span>
+                    {owners.length > 1 && (
+                      <button onClick={() => removeOwner(i)} style={{ background: "none", border: "none", color: "#DC2626", fontSize: 11, cursor: "pointer" }}>Remove</button>
+                    )}
                   </div>
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {s.name}
+                  <input value={owner.full_name} onChange={e => updateOwner(i, "full_name", e.target.value)} placeholder="Full name" style={{ ...inputStyle, marginBottom: 8 }} />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                    <input value={owner.id_number} onChange={e => updateOwner(i, "id_number", e.target.value)} placeholder="ID number" style={{ ...inputStyle, fontFamily: "monospace" }} />
+                    <input value={owner.ownership_pct} onChange={e => updateOwner(i, "ownership_pct", e.target.value)} placeholder="Ownership %" type="number" style={inputStyle} />
                   </div>
-                  <div style={{ fontSize: 12.5, color: T.sub, marginTop: 2 }}>
-                    {s.category || "General"} · Manage products & details
-                  </div>
+                  <input value={owner.address} onChange={e => updateOwner(i, "address", e.target.value)} placeholder="Address" style={{ ...inputStyle, marginBottom: 8 }} />
+                  <input type="date" value={owner.date_of_birth} onChange={e => updateOwner(i, "date_of_birth", e.target.value)} style={inputStyle} />
                 </div>
-                <Ic d={P.arrow} size={17} color={T.faint} />
+              ))}
+              <button onClick={addOwner} style={{ width: "100%", background: "none", border: `1.5px dashed ${BORDER}`, borderRadius: 10, padding: "10px 0", fontSize: 12, color: P, fontWeight: 600, cursor: "pointer" }}>
+                + Add another owner
+              </button>
+            </div>
+
+            <button onClick={() => canContinueStep2 && setStep(3)} disabled={!canContinueStep2}
+              style={{ width: "100%", background: canContinueStep2 ? P : "#D1D5DB", color: "#fff", border: "none", borderRadius: 14, padding: "15px 0", fontSize: 15, fontWeight: 700, cursor: canContinueStep2 ? "pointer" : "default" }}>
+              Continue
+            </button>
+          </div>
+        )}
+
+        {/* ── STEP 3: BANKING + DOCUMENTS ── */}
+        {step === 3 && (
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 16 }}>Banking & Documents</div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Bank Name *</label>
+              <select value={bankName} onChange={e => setBankName(e.target.value)} style={inputStyle}>
+                <option value="">Select your bank…</option>
+                {["FNB", "Standard Bank", "Absa", "Nedbank", "Capitec", "TymeBank", "Investec", "Bidvest Bank"].map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Account Holder Name *</label>
+              <input value={accHolder} onChange={e => setAccHolder(e.target.value)} placeholder={accountType === "business" ? "Must match legal business name" : "Must match your legal name"} style={inputStyle} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={labelStyle}>Account Number *</label>
+                <input value={accNumber} onChange={e => setAccNumber(e.target.value.replace(/\D/g, ""))} style={{ ...inputStyle, fontFamily: "monospace" }} />
               </div>
-            ))}
+              <div>
+                <label style={labelStyle}>Branch Code *</label>
+                <input value={branchCode} onChange={e => setBranchCode(e.target.value.replace(/\D/g, ""))} style={{ ...inputStyle, fontFamily: "monospace" }} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>Account Type</label>
+              <select value={accType} onChange={e => setAccType(e.target.value)} style={inputStyle}>
+                <option value="savings">Savings</option>
+                <option value="cheque">Cheque / Current</option>
+              </select>
+            </div>
+
+            <div style={{ height: 1, background: BORDER, marginBottom: 20 }} />
+
+            <div style={{ fontSize: 13, fontWeight: 700, color: DARK, marginBottom: 4 }}>Required Documents</div>
+            <div style={{ fontSize: 11, color: MUTED, marginBottom: 16 }}>We may not need all of these — but uploading them now speeds up your review.</div>
+
+            <DocUpload
+              label="Government-Issued Photo ID"
+              hint="Your SA ID card, driver's licence or passport"
+              value={idDoc} onChange={setIdDoc}
+            />
+            <DocUpload
+              label="Proof of Address"
+              hint="A recent utility bill or bank statement showing your name and address (within 3 months)"
+              value={addressDoc} onChange={setAddressDoc}
+            />
+            <DocUpload
+              label="Bank Confirmation"
+              hint="A bank statement or cancelled cheque confirming your account details"
+              value={bankDoc} onChange={setBankDoc}
+            />
+            {accountType === "business" && (
+              <>
+                <DocUpload
+                  label="CIPC Registration Certificate"
+                  hint="Your company registration / incorporation document"
+                  value={cipcDoc} onChange={setCipcDoc}
+                />
+                {vatNumber && (
+                  <DocUpload
+                    label="VAT Registration Certificate"
+                    hint="Only required if you provided a VAT number"
+                    value={vatDoc} onChange={setVatDoc}
+                  />
+                )}
+              </>
+            )}
+
+            <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.6, margin: "16px 0" }}>
+              By submitting, you confirm all information provided is accurate and you authorise Maizu to verify these details with relevant third parties as required under South African financial regulations.
+            </div>
+
+            <button onClick={handleSubmit} disabled={busy || !canSubmit}
+              style={{ width: "100%", background: (busy || !canSubmit) ? "#D1D5DB" : P, color: "#fff", border: "none", borderRadius: 14, padding: "16px 0", fontSize: 15, fontWeight: 700, cursor: (busy || !canSubmit) ? "default" : "pointer" }}>
+              {busy ? "Submitting…" : "Submit for Verification"}
+            </button>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DEFAULT EXPORT — wraps content in Suspense
+   (fixes the "useSearchParams should be wrapped in suspense" build error)
+══════════════════════════════════════════════════════════════ */
+export default function VerifyAccountPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: BG }} />}>
+      <VerifyAccountPageContent />
+    </Suspense>
   );
 }
