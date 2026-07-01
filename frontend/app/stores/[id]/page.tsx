@@ -176,7 +176,7 @@ export default function PublicStorePage() {
           <div style={{ background: C.white, borderRadius: 16, padding: "36px 20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: C.dark }}>No products yet</div>
-            <div style={{ fontSize: 12, color: C.gray, marginTop: 4 }}>This store hasn't listed anything yet — check back soon.</div>
+            <div style={{ fontSize: 12, color: C.gray, marginTop: 4 }}>This store hasn&apos;t listed anything yet — check back soon.</div>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>

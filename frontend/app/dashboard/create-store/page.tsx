@@ -160,8 +160,8 @@ export default function CreateStorePage() {
         <Card>
           <div style={{ textAlign: "center", padding: "20px 0" }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: T.ink }}>Connection problem</div>
-            <div style={{ fontSize: 13.5, color: T.sub, marginTop: 6 }}>
-              We couldn't reach the server. Check your internet and try again.
+           <div style={{ fontSize: 13.5, color: T.sub, marginTop: 6 }}>
+              We couldn&apos;t reach the server. Check your internet and try again.
             </div>
             <button onClick={() => window.location.reload()}
               style={{ marginTop: 18, background: T.ink, color: "#fff", border: "none", borderRadius: 12, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>

@@ -32,14 +32,14 @@ export default function TermsPage() {
         <button onClick={() => router.back()} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={DARK} strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <div style={{ fontSize: 16, fontWeight: 700, color: DARK }}>Terms & Conditions</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: DARK }}>Terms &amp; Conditions</div>
       </div>
 
       <div style={{ padding: "24px 20px 60px", maxWidth: 680, margin: "0 auto" }}>
         <div style={{ fontSize: 12, color: MUTED, marginBottom: 20 }}>Last updated: June 2026</div>
 
         <Section title="1. Acceptance of Terms">
-          These Terms and Conditions govern your access to and use of the Maizu Business Hub platform ("Platform"), operated by Maizu Business Hub (Pty) Ltd ("Maizu", "we", "us"). By creating an account or using the Platform, you agree to be bound by these Terms.
+          These Terms and Conditions govern your access to and use of the Maizu Business Hub platform (&quot;Platform&quot;), operated by Maizu Business Hub (Pty) Ltd (&quot;Maizu&quot;, &quot;we&quot;, &quot;us&quot;). By creating an account or using the Platform, you agree to be bound by these Terms.
         </Section>
 
         <Section title="2. Eligibility">
@@ -49,7 +49,7 @@ export default function TermsPage() {
         </Section>
 
         <Section title="3. Buyer & Vendor Accounts">
-          Every Maizu account can act as a buyer. Any user can choose to become a vendor at any time by upgrading their account through the "Become a Vendor" option — this is free and instant. Vendors can open one or more stores depending on their subscription plan and list products for sale.
+          Every Maizu account can act as a buyer. Any user can choose to become a vendor at any time by upgrading their account through the &quot;Become a Vendor&quot; option — this is free and instant. Vendors can open one or more stores depending on their subscription plan and list products for sale.
         </Section>
 
         <Section title="4. Vendor Responsibilities">
@@ -61,17 +61,16 @@ export default function TermsPage() {
         </Section>
 
         <Section title="5. Payments & Commission">
-          Maizu deducts a commission from each completed transaction: 5% on the Free plan, 3% on Basic, 1% on Pro. A 5% platform service fee is added to the buyer's total at checkout. Payments are processed via Flutterwave, PayFast, EFT, or Cash on Delivery, depending on what the vendor enables.
+          Maizu deducts a commission from each completed transaction: 5% on the Free plan, 3% on Basic, 1% on Pro. A 5% platform service fee is added to the buyer&apos;s total at checkout. Payments are processed via Flutterwave, PayFast, EFT, or Cash on Delivery, depending on what the vendor enables.
         </Section>
 
-        {/* ── REFUND POLICY ── */}
         <Section title="6. Refund Policy">
           <p style={{ marginBottom: 8 }}>You may request a refund if:</p>
           <Bullet>The item received is significantly different from the listing description or photos</Bullet>
           <Bullet>The item is damaged, broken or defective on arrival</Bullet>
           <Bullet>The wrong item was sent (incorrect size, colour or product)</Bullet>
           <Bullet>The item never arrived within 10 business days of dispatch</Bullet>
-          <p style={{ marginTop: 10, marginBottom: 8 }}><strong>How to request:</strong> Go to My Orders → select the order → "Report a Problem" → choose your reason and upload photos. The vendor has 48 hours to respond. If unresolved, escalate to support@maizu.co.za.</p>
+          <p style={{ marginTop: 10, marginBottom: 8 }}><strong>How to request:</strong> Go to My Orders → select the order → &quot;Report a Problem&quot; → choose your reason and upload photos. The vendor has 48 hours to respond. If unresolved, escalate to support@maizu.co.za.</p>
           <p style={{ marginBottom: 8 }}><strong>Refund timelines:</strong></p>
           <Bullet>Card payments: 5–10 business days back to your original card</Bullet>
           <Bullet>EFT payments: 5 business days to your bank account</Bullet>
@@ -79,11 +78,10 @@ export default function TermsPage() {
           <p style={{ marginTop: 10 }}><strong>Non-returnable items:</strong> Perishable food (unless spoiled), opened hygiene products, custom or personalised items, and digital products are not eligible for return.</p>
         </Section>
 
-        {/* ── CANCELLATION POLICY ── */}
         <Section title="7. Cancellation Policy">
           <p style={{ marginBottom: 8 }}><strong>Buyer cancellations:</strong></p>
           <Bullet>You may cancel your order free of charge within 1 hour of placing it, provided the vendor has not yet confirmed it</Bullet>
-          <Bullet>Once an order is confirmed by the vendor, cancellation is at the vendor's discretion</Bullet>
+          <Bullet>Once an order is confirmed by the vendor, cancellation is at the vendor&apos;s discretion</Bullet>
           <Bullet>Once an order has shipped, it cannot be cancelled — you may instead request a return once delivered</Bullet>
           <p style={{ marginTop: 10, marginBottom: 8 }}><strong>Vendor cancellations:</strong></p>
           <Bullet>Vendors must confirm or cancel orders within 24 hours of payment</Bullet>
@@ -99,7 +97,7 @@ export default function TermsPage() {
           1. Contact the vendor directly through the Platform.<br/>
           2. If unresolved within 5 business days, escalate to support@maizu.co.za.<br/>
           3. Maizu will investigate and may request evidence from both parties.<br/>
-          4. Maizu's decision is final for the purposes of Platform operations.
+          4. Maizu&apos;s decision is final for the purposes of Platform operations.
         </Section>
 
         <Section title="9. Limitation of Liability">

@@ -322,7 +322,7 @@ export default function CheckoutPage() {
               </div>
 
               <div style={{ background: "#FFF9E6", borderRadius: 10, padding: "10px 12px", fontSize: 11, color: "#7A5800", lineHeight: 1.6 }}>
-                🔐 You will be redirected to PayFast's secure payment page. Your card details are never stored on Maizu.
+               🔒 You will be redirected to PayFast&apos;s secure payment page. Your card details are never stored on Maizu.
               </div>
             </div>
 

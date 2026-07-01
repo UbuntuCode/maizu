@@ -11,7 +11,6 @@ export default function OfflinePage() {
   const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
-    /* Auto-reload once connection comes back */
     const handleOnline = () => window.location.href = "/";
     window.addEventListener("online", handleOnline);
     return () => window.removeEventListener("online", handleOnline);
@@ -37,10 +36,10 @@ export default function OfflinePage() {
       </div>
 
       <div style={{ fontSize: 22, fontWeight: 800, color: DARK, marginBottom: 10 }}>
-        You're offline
+        You&apos;re offline
       </div>
       <div style={{ fontSize: 14, color: MUTED, lineHeight: 1.7, maxWidth: 300, marginBottom: 28 }}>
-        It looks like you've lost your internet connection. Some pages you've already visited may still work — check your connection and try again.
+        It looks like you&apos;ve lost your internet connection. Some pages you&apos;ve already visited may still work — check your connection and try again.
       </div>
 
       <button
@@ -52,7 +51,7 @@ export default function OfflinePage() {
       </button>
 
       <div style={{ fontSize: 12, color: MUTED, marginTop: 24 }}>
-        We'll reconnect automatically once you're back online.
+        We&apos;ll reconnect automatically once you&apos;re back online.
       </div>
     </div>
   );

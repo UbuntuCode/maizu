@@ -28,7 +28,7 @@ export default function AboutPage() {
         </div>
 
         <p style={{ fontSize: 15, color: "#374151", lineHeight: 1.8, marginBottom: 24, textAlign: "center" }}>
-          Maizu Business Hub is South Africa's marketplace for local entrepreneurs. We connect everyday vendors — from Durban market traders to small registered businesses — with buyers across the country.
+          Maizu Business Hub is South Africa&apos;s marketplace for local entrepreneurs. We connect everyday vendors — from Durban market traders to small registered businesses — with buyers across the country.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 32 }}>

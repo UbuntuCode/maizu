@@ -85,8 +85,8 @@ export default function BecomeVendorPage() {
         <h1 style={{ fontSize: 22, fontWeight: 900, color: DARK, textAlign: "center", marginBottom: 10 }}>
           Open your store on Maizu
         </h1>
-        <p style={{ fontSize: 14, color: MUTED, textAlign: "center", lineHeight: 1.6, marginBottom: 28 }}>
-          You're currently registered as a buyer. To list products and sell on Maizu, we'll upgrade your account to a vendor account — this takes one tap and you keep all your existing buyer history.
+       <p style={{ fontSize: 14, color: MUTED, textAlign: "center", lineHeight: 1.6, marginBottom: 28 }}>
+          You&apos;re currently registered as a buyer. To list products and sell on Maizu, we&apos;ll upgrade your account to a vendor account — this takes one tap and you keep all your existing buyer history.
         </p>
 
         {error && (

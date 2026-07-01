@@ -25,8 +25,7 @@ export default function GlobalError({
           minHeight: "100vh",
         }}
       >
-        <h2 style={{ color: "#ff6b6b" }}>⚠️ Maizu crashed — here's why:</h2>
-
+        <h2 style={{ color: "#ff6b6b" }}>⚠️ Maizu crashed — here&apos;s why:</h2>
         <p style={{ color: "#ffd93d", fontSize: 16, wordBreak: "break-word" }}>
           <strong>Message:</strong> {error.message || "(no message)"}
         </p>

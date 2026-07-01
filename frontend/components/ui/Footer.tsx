@@ -24,7 +24,7 @@ export default function Footer() {
         <div style={{ flex: "1 1 140px", minWidth: 130 }}>
           <Logo small />
           <p style={{ fontSize: 12, color: C.gray, marginTop: 10, lineHeight: 1.65 }}>
-            South Africa's premier business hub empowering entrepreneurs across the nation.
+           South Africa&apos;s premier business hub empowering entrepreneurs across the nation. 
           </p>
         </div>
         <div>

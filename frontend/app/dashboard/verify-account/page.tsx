@@ -167,7 +167,7 @@ function VerifyAccountPageContent() {
         <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#D1FAE5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, marginBottom: 18 }}>✅</div>
         <div style={{ fontSize: 19, fontWeight: 800, color: DARK, marginBottom: 8 }}>Verification submitted</div>
         <div style={{ fontSize: 13, color: MUTED, maxWidth: 300, lineHeight: 1.6, marginBottom: 24 }}>
-          Most accounts are reviewed within 1–2 business days. We'll notify you once it's complete — you can keep listing products in the meantime.
+          Most accounts are reviewed within 1–2 business days. We&apos;ll notify you once it&apos;s complete — you can keep listing products in the meantime.
         </div>
         <button onClick={() => router.push("/dashboard")} style={{ background: P, color: "#fff", border: "none", borderRadius: 22, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
           Back to Dashboard
@@ -206,14 +206,13 @@ function VerifyAccountPageContent() {
         {step === 1 && (
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 6 }}>How are you selling?</div>
-            <div style={{ fontSize: 12, color: MUTED, marginBottom: 18 }}>This determines what information we'll need from you.</div>
+            <div style={{ fontSize: 12, color: MUTED, marginBottom: 18 }}>This determines what information we&apos;ll need from you.</div>
 
             <button onClick={() => setAccountType("personal")}
               style={{ width: "100%", textAlign: "left", background: accountType === "personal" ? SOFT : WHITE, border: `2px solid ${accountType === "personal" ? P : BORDER}`, borderRadius: 16, padding: "18px", marginBottom: 12, cursor: "pointer" }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>
               <div style={{ fontSize: 15, fontWeight: 700, color: DARK, marginBottom: 4 }}>Personal Seller</div>
-              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>You're an individual selling as yourself — crafts, second-hand items, a side hustle. Requires your SA ID and proof of address.</div>
-            </button>
+              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>You&apos;re an individual selling as yourself — crafts, second-hand items, a side hustle. Requires your SA ID and proof of address.</div>
 
             <button onClick={() => setAccountType("business")}
               style={{ width: "100%", textAlign: "left", background: accountType === "business" ? SOFT : WHITE, border: `2px solid ${accountType === "business" ? P : BORDER}`, borderRadius: 16, padding: "18px", marginBottom: 20, cursor: "pointer" }}>

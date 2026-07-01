@@ -72,7 +72,7 @@ export default function SupportPage() {
 
       <div style={{ padding: "20px 16px" }}>
         <div style={{ fontSize: 13, color: C.gray, marginBottom: 20, lineHeight: 1.6 }}>
-          Browse common topics below. Can't find what you need? Our team is one message away.
+         Browse common topics below. Can&apos;t find what you need? Our team is one message away.
         </div>
 
         {TOPICS.map(t => <TopicCard key={t.title} title={t.title} items={t.items} />)}

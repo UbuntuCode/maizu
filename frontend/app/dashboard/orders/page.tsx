@@ -112,7 +112,7 @@ export default function StoreOrdersPage() {
         </button>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: T.ink, margin: "10px 0 4px", letterSpacing: -0.4 }}>Store orders</h1>
         <p style={{ fontSize: 14, color: T.sub, margin: "0 0 18px" }}>
-          Every order placed for your products. Keep buyers happy by updating each order's status as it moves.
+          Every order placed for your products. Keep buyers happy by updating each order&apos;s status as it moves.
         </p>
 
         {/* Filter chips */}
