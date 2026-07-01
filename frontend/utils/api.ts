@@ -1,11 +1,11 @@
-// ─────────────────────────────────────────────────────────────
-// utils/api.ts  — all Express backend calls
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────
+// utils/api.ts — all Express backend calls
+// ─────────────────────────────────────────────────────
 import { supabase } from "@/utils/supabase";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-/* ── Types ──────────────────────────────────────────────────── */
+/* ── Types ─────────────────────────────────────────── */
 export interface UserProfile {
   id:          string;
   full_name:   string;
@@ -61,7 +61,7 @@ export interface Order {
   updated_at?:      string;
 }
 
-/* ── Base fetch ─────────────────────────────────────────────── */
+/* ── Base fetch ────────────────────────────────────── */
 const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
@@ -95,7 +95,7 @@ const requestForm = async <T>(path: string, method: string, body: FormData): Pro
   return data as T;
 };
 
-/* ── STORES ─────────────────────────────────────────────────── */
+/* ── STORES ────────────────────────────────────────── */
 export const storesApi = {
   getAll: async (params?: { category?: string; search?: string; limit?: number; offset?: number }) => {
     const q = new URLSearchParams();
@@ -114,6 +114,12 @@ export const storesApi = {
 
   getMyStores: async () => {
     const res = await request<{ success: boolean; stores: Store[] }>("/api/vendors/my/stores");
+    return res.stores;
+  },
+
+  /* NEW: get stores the current user follows */
+  getMyFollows: async () => {
+    const res = await request<{ success: boolean; stores: Store[] }>("/api/vendors/my/follows");
     return res.stores;
   },
 
@@ -137,7 +143,7 @@ export const storesApi = {
   },
 };
 
-/* ── PRODUCTS ───────────────────────────────────────────────── */
+/* ── PRODUCTS ──────────────────────────────────────── */
 export const productsApi = {
   getAll: async (params?: { store_id?: string; category?: string; search?: string; trending?: boolean }) => {
     const q = new URLSearchParams();
@@ -176,7 +182,7 @@ export const productsApi = {
   },
 };
 
-/* ── ORDERS ─────────────────────────────────────────────────── */
+/* ── ORDERS ────────────────────────────────────────── */
 export const ordersApi = {
   place: async (
     items: { product_id: string; quantity: number }[],
@@ -200,7 +206,6 @@ export const ordersApi = {
     return res.order;
   },
 
-  /* ── NEW: get all orders for a specific store (vendor only) ── */
   getStoreOrders: async (storeId: string) => {
     const res = await request<{ success: boolean; orders: Order[] }>(
       `/api/orders/store/${storeId}`
@@ -208,7 +213,6 @@ export const ordersApi = {
     return res.orders;
   },
 
-  /* ── NEW: update order status (vendor only) ── */
   updateStatus: async (orderId: string, status: Order["status"]) => {
     const res = await request<{ success: boolean; order: Order }>(
       `/api/orders/${orderId}/status`,

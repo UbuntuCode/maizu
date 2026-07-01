@@ -9,6 +9,7 @@ const {
   getAllStores,
   getStore,
   getMyStores,
+  getMyFollows,
   becomeVendor,
   createStore,
   updateStore,
@@ -25,6 +26,7 @@ const storeUpload = upload.fields([
 // Public
 router.get("/",            getAllStores);
 router.get("/my/stores",   protect, getMyStores);
+router.get("/my/follows",  protect, getMyFollows);
 
 // ⚠️ MUST come before router.put("/:id", ...) below —
 // otherwise Express treats "become-vendor" as an :id param

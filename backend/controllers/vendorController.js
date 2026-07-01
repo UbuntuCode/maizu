@@ -1,7 +1,8 @@
 const { query }              = require("../config/db");
 const { uploadToCloudinary } = require("../config/cloudinary");
+const { sendNotification }   = require("./notificationController");
 
-/* ── GET ALL STORES ── GET /api/vendors ─────────────────────── */
+/* ── GET ALL STORES ── GET /api/vendors ────────────────────── */
 const getAllStores = async (req, res) => {
   const { category, search, limit = 20, offset = 0 } = req.query;
 
@@ -27,7 +28,7 @@ const getAllStores = async (req, res) => {
   res.status(200).json({ success: true, stores: result.rows, count: result.rows.length });
 };
 
-/* ── GET SINGLE STORE ── GET /api/vendors/:id ───────────────── */
+/* ── GET SINGLE STORE ── GET /api/vendors/:id ─────────────────── */
 const getStore = async (req, res) => {
   const result = await query(
     `SELECT s.*, u.full_name AS owner_name, u.email AS owner_email
@@ -43,7 +44,7 @@ const getStore = async (req, res) => {
   res.status(200).json({ success: true, store: result.rows[0] });
 };
 
-/* ── GET MY STORES ── GET /api/vendors/my/stores ────────────── */
+/* ── GET MY STORES ── GET /api/vendors/my/stores ──────────────── */
 const getMyStores = async (req, res) => {
   const result = await query(
     "SELECT * FROM stores WHERE owner_id = $1 ORDER BY created_at DESC",
@@ -52,14 +53,20 @@ const getMyStores = async (req, res) => {
   res.status(200).json({ success: true, stores: result.rows });
 };
 
-/* ── BECOME A VENDOR ── PUT /api/vendors/become-vendor ──────── */
-/* Upgrades a buyer's role to vendor instantly, with no store
-   required yet. This is what /app/become-vendor/page.tsx calls
-   before sending the user to the store creation form.
-   NOTE: createStore() below also auto-upgrades on first store —
-   this endpoint exists so the role can flip BEFORE a store exists,
-   e.g. to unlock vendor-only UI immediately after tapping
-   "Become a Vendor". */
+/* ── GET MY FOLLOWED STORES ── GET /api/vendors/my/follows ────── */
+const getMyFollows = async (req, res) => {
+  const result = await query(
+    `SELECT s.*
+     FROM stores s
+     JOIN store_followers sf ON s.id = sf.store_id
+     WHERE sf.user_id = $1
+     ORDER BY sf.created_at DESC`,
+    [req.user.id]
+  );
+  res.status(200).json({ success: true, stores: result.rows });
+};
+
+/* ── BECOME A VENDOR ── PUT /api/vendors/become-vendor ────────── */
 const becomeVendor = async (req, res) => {
   try {
     const result = await query(
@@ -78,7 +85,7 @@ const becomeVendor = async (req, res) => {
   }
 };
 
-/* ── CREATE STORE ── POST /api/vendors ──────────────────────── */
+/* ── CREATE STORE ── POST /api/vendors ─────────────────────────── */
 const createStore = async (req, res) => {
   const { name, description, category, floor_location } = req.body;
 
@@ -104,8 +111,6 @@ const createStore = async (req, res) => {
     [req.user.id, name.trim(), description, category, floor_location, logo_url, banner_url]
   );
 
-  /* Auto-upgrade user to vendor when they create their first store
-     (kept as a safety net even though /become-vendor already does this) */
   await query(
     "UPDATE users SET role = 'vendor' WHERE id = $1 AND role = 'buyer'",
     [req.user.id]
@@ -114,7 +119,7 @@ const createStore = async (req, res) => {
   res.status(201).json({ success: true, store: result.rows[0] });
 };
 
-/* ── UPDATE STORE ── PUT /api/vendors/:id ───────────────────── */
+/* ── UPDATE STORE ── PUT /api/vendors/:id ──────────────────────── */
 const updateStore = async (req, res) => {
   const { id } = req.params;
   const { name, description, category, floor_location } = req.body;
@@ -137,7 +142,7 @@ const updateStore = async (req, res) => {
   res.status(200).json({ success: true, store: result.rows[0] });
 };
 
-/* ── DELETE STORE ── DELETE /api/vendors/:id ────────────────── */
+/* ── DELETE STORE ── DELETE /api/vendors/:id ───────────────────── */
 const deleteStore = async (req, res) => {
   const check = await query("SELECT owner_id FROM stores WHERE id = $1", [req.params.id]);
   if (check.rows.length === 0) return res.status(404).json({ success: false, message: "Store not found." });
@@ -147,7 +152,7 @@ const deleteStore = async (req, res) => {
   res.status(200).json({ success: true, message: "Store deleted." });
 };
 
-/* ── FOLLOW / UNFOLLOW ── POST /api/vendors/:id/follow ─────── */
+/* ── FOLLOW / UNFOLLOW ── POST /api/vendors/:id/follow ─────────── */
 const followStore = async (req, res) => {
   const { id }   = req.params;
   const userId   = req.user.id;
@@ -168,6 +173,19 @@ const followStore = async (req, res) => {
     [id, userId]
   );
   await query("UPDATE stores SET follower_count = follower_count + 1 WHERE id = $1", [id]);
+
+  /* ── Notify store owner of new follower ── */
+  const storeInfo = await query("SELECT owner_id, name FROM stores WHERE id = $1", [id]);
+  if (storeInfo.rows.length > 0 && storeInfo.rows[0].owner_id !== userId) {
+    await sendNotification(
+      storeInfo.rows[0].owner_id,
+      "new_follower",
+      "New follower! 👥",
+      "Someone just followed " + storeInfo.rows[0].name + ".",
+      { store_id: id }
+    );
+  }
+
   res.status(200).json({ success: true, following: true });
 };
 
@@ -175,6 +193,7 @@ module.exports = {
   getAllStores,
   getStore,
   getMyStores,
+  getMyFollows,
   becomeVendor,
   createStore,
   updateStore,
