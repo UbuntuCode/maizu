@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { C } from "@/utils/constants";
 import { useAuth } from "@/context/AuthContext";
@@ -6,7 +6,7 @@ import { supabase } from "@/utils/supabase";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-/* ── Types ──────────────────────────────────────────────────── */
+/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 interface Review {
   id:              string;
   reviewer_id:     string;
@@ -24,16 +24,16 @@ interface ReviewSectionProps {
   storeName?: string;
 }
 
-/* ── Star rating display ────────────────────────────────────── */
+/* â”€â”€ Star rating display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export const StarDisplay = ({ rating, size = 14 }: { rating: number; size?: number }) => (
   <div style={{ display: "flex", gap: 1 }}>
     {[1, 2, 3, 4, 5].map(i => (
-      <span key={i} style={{ fontSize: size, color: i <= Math.round(rating) ? "#F59E0B" : "#D1D5DB", lineHeight: 1 }}>★</span>
+      <span key={i} style={{ fontSize: size, color: i <= Math.round(rating) ? "#F59E0B" : "#D1D5DB", lineHeight: 1 }}>â˜…</span>
     ))}
   </div>
 );
 
-/* ── Interactive star picker ────────────────────────────────── */
+/* â”€â”€ Interactive star picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const StarPicker = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
   const [hover, setHover] = useState(0);
   return (
@@ -46,20 +46,20 @@ const StarPicker = ({ value, onChange }: { value: number; onChange: (v: number) 
           onClick={() => onChange(i)}
           style={{ fontSize: 32, cursor: "pointer", color: i <= (hover || value) ? "#F59E0B" : "#D1D5DB", transition: "color 0.1s", lineHeight: 1 }}
         >
-          ★
+          â˜…
         </span>
       ))}
     </div>
   );
 };
 
-/* ── Rating breakdown bar ───────────────────────────────────── */
+/* â”€â”€ Rating breakdown bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const RatingBar = ({ star, count, total }: { star: number; count: number; total: number }) => {
   const pct = total > 0 ? (count / total) * 100 : 0;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
       <span style={{ fontSize: 11, color: C.gray, width: 8, textAlign: "right" }}>{star}</span>
-      <span style={{ fontSize: 10, color: "#F59E0B" }}>★</span>
+      <span style={{ fontSize: 10, color: "#F59E0B" }}>â˜…</span>
       <div style={{ flex: 1, height: 6, background: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: "#F59E0B", borderRadius: 3, transition: "width 0.5s" }} />
       </div>
@@ -68,7 +68,7 @@ const RatingBar = ({ star, count, total }: { star: number; count: number; total:
   );
 };
 
-/* ── Single review card ─────────────────────────────────────── */
+/* â”€â”€ Single review card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const ReviewCard = ({
   review, isOwn, onDelete,
 }: {
@@ -127,7 +127,7 @@ const ReviewCard = ({
             disabled={deleting}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.gray, padding: 4 }}
           >
-            {deleting ? "…" : "🗑"}
+            {deleting ? "â€¦" : "ðŸ—‘"}
           </button>
         )}
       </div>
@@ -144,14 +144,14 @@ const ReviewCard = ({
 
       {/* Verified badge */}
       <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 4, background: "#E1F5EE", borderRadius: 20, padding: "2px 8px" }}>
-        <span style={{ fontSize: 9 }}>✓</span>
+        <span style={{ fontSize: 9 }}>âœ“</span>
         <span style={{ fontSize: 9, color: "#085041", fontWeight: 600 }}>Verified Review</span>
       </div>
     </div>
   );
 };
 
-/* ── Write review form ──────────────────────────────────────── */
+/* â”€â”€ Write review form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const WriteReviewForm = ({
   storeId, productId, onSubmitted, onCancel,
 }: {
@@ -212,7 +212,7 @@ const WriteReviewForm = ({
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          placeholder="Summarise your experience…"
+          placeholder="Summarise your experienceâ€¦"
           maxLength={100}
           style={{ width: "100%", padding: "10px 12px", border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 13, outline: "none", color: C.dark, boxSizing: "border-box" }}
         />
@@ -224,7 +224,7 @@ const WriteReviewForm = ({
         <textarea
           value={body}
           onChange={e => setBody(e.target.value)}
-          placeholder="Tell others about your experience with this product/store…"
+          placeholder="Tell others about your experience with this product/storeâ€¦"
           rows={4}
           style={{ width: "100%", padding: "10px 12px", border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 13, outline: "none", color: C.dark, boxSizing: "border-box", resize: "vertical", lineHeight: 1.5 }}
         />
@@ -236,7 +236,7 @@ const WriteReviewForm = ({
           disabled={busy}
           style={{ flex: 2, background: busy ? C.grayLight : C.primary, color: "#fff", border: "none", borderRadius: 12, padding: "12px 0", fontSize: 14, fontWeight: 700, cursor: busy ? "default" : "pointer" }}
         >
-          {busy ? "Submitting…" : "Submit Review"}
+          {busy ? "Submittingâ€¦" : "Submit Review"}
         </button>
         <button
           onClick={onCancel}
@@ -249,10 +249,10 @@ const WriteReviewForm = ({
   );
 };
 
-/* ══════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MAIN REVIEW SECTION COMPONENT
-══════════════════════════════════════════════════════════════ */
-export default function ReviewSection({ storeId, productId, storeName }: ReviewSectionProps) {
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+export default function ReviewSection({ storeId, productId }: ReviewSectionProps) {
   const { authUser, isLoggedIn } = useAuth();
 
   const [reviews,    setReviews]    = useState<Review[]>([]);
@@ -330,7 +330,7 @@ export default function ReviewSection({ storeId, productId, storeName }: ReviewS
   return (
     <div style={{ background: C.bg }}>
 
-      {/* ── Summary card ── */}
+      {/* â”€â”€ Summary card â”€â”€ */}
       <div style={{ background: C.white, padding: "18px 16px", marginBottom: 10 }}>
         <div style={{ fontSize: 16, fontWeight: 800, color: C.dark, marginBottom: 14 }}>
           Reviews & Ratings
@@ -338,8 +338,8 @@ export default function ReviewSection({ storeId, productId, storeName }: ReviewS
 
         {total === 0 && !loading ? (
           <div style={{ textAlign: "center", padding: "16px 0" }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
-            <div style={{ fontSize: 13, color: C.gray }}>No reviews yet — be the first!</div>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>â­</div>
+            <div style={{ fontSize: 13, color: C.gray }}>No reviews yet â€” be the first!</div>
           </div>
         ) : (
           <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
@@ -371,21 +371,21 @@ export default function ReviewSection({ storeId, productId, storeName }: ReviewS
               </button>
             ) : alreadyReviewed ? (
               <div style={{ background: "#E1F5EE", borderRadius: 12, padding: "10px 14px", fontSize: 12, color: "#085041", textAlign: "center", fontWeight: 600 }}>
-                ✓ You have already reviewed this {storeId ? "store" : "product"}
+                âœ“ You have already reviewed this {storeId ? "store" : "product"}
               </div>
             ) : canReview ? (
               <button
                 onClick={() => setShowForm(true)}
                 style={{ width: "100%", background: C.primary, color: "#fff", border: "none", borderRadius: 12, padding: "12px 0", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
               >
-                ✍️ Write a Review
+                âœï¸ Write a Review
               </button>
             ) : null}
           </div>
         )}
       </div>
 
-      {/* ── Review form ── */}
+      {/* â”€â”€ Review form â”€â”€ */}
       {showForm && (
         <div style={{ padding: "0 16px", marginBottom: 0 }}>
           <WriteReviewForm
@@ -397,10 +397,10 @@ export default function ReviewSection({ storeId, productId, storeName }: ReviewS
         </div>
       )}
 
-      {/* ── Reviews list ── */}
+      {/* â”€â”€ Reviews list â”€â”€ */}
       {loading ? (
         <div style={{ padding: "20px 16px", textAlign: "center", color: C.gray, fontSize: 13 }}>
-          Loading reviews…
+          Loading reviewsâ€¦
         </div>
       ) : reviews.length > 0 ? (
         <div style={{ padding: "0 16px" }}>
@@ -418,3 +418,4 @@ export default function ReviewSection({ storeId, productId, storeName }: ReviewS
     </div>
   );
 }
+

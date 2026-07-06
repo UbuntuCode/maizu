@@ -1,6 +1,5 @@
-"use client"
+﻿"use client"
 
-import { useRouter } from "next/navigation"
 import { logout } from "@/utils/auth"
 
 export default function DashboardLayout({
@@ -8,7 +7,6 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const router = useRouter()
 
   const handleLogout = () => {
     logout()
@@ -30,7 +28,7 @@ export default function DashboardLayout({
         }}
       >
         <div>
-          <h2>MAIZU 🚀</h2>
+          <h2>MAIZU ðŸš€</h2>
 
           <p style={{ cursor: "pointer" }} onClick={() => window.location.href = "/dashboard"}>
             Dashboard
@@ -68,3 +66,4 @@ export default function DashboardLayout({
     </div>
   )
 }
+

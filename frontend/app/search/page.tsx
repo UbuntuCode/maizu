@@ -1,8 +1,7 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { supabase } from "@/utils/supabase";
 import BottomNav from "@/components/navigation/BottomNav";
 import Header from "@/components/layout/Header";
 
@@ -93,7 +92,7 @@ function SearchContent() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="2" style={{ flexShrink:0 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input ref={inputRef} value={inputVal}
               onChange={e => { setInputVal(e.target.value); setQuery(e.target.value); }}
-              placeholder="Search products, stores…"
+              placeholder="Search products, storesâ€¦"
               style={{ flex:1, background:"none", border:"none", outline:"none", padding:"10px 9px", fontSize:14, color:DARK }}
             />
             {inputVal && (
@@ -121,7 +120,7 @@ function SearchContent() {
 
       <div style={{ padding:"14px" }}>
 
-        {/* Empty — show categories */}
+        {/* Empty â€” show categories */}
         {!query.trim() && !searched && (
           <>
             <div style={{ fontSize:15, fontWeight:700, color:DARK, marginBottom:12 }}>Browse categories</div>
@@ -229,3 +228,4 @@ export default function SearchPage() {
     </Suspense>
   );
 }
+

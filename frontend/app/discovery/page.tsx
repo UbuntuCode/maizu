@@ -1,17 +1,14 @@
-"use client";
-import React, { useState, useRef, useEffect, useCallback } from "react";
+﻿"use client";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/utils/supabase";
 import BottomNav from "@/components/navigation/BottomNav";
 
-const BASE  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 const P     = "#E8401C";
 const DARK  = "#0F0F0F";
-const MUTED = "#71717A";
 const WHITE = "#FFFFFF";
 
-/* ── Module-level store — persists between page navigations ── */
+/* â”€â”€ Module-level store â€” persists between page navigations â”€â”€ */
 interface VideoItem {
   id:         string;
   url:        string;
@@ -28,11 +25,11 @@ interface VideoItem {
 
 /* Global store survives React re-mounts within the same session */
 let globalVideos: VideoItem[] = [];
-let globalLikes:  Record<string, boolean> = {};
+const globalLikes:  Record<string, boolean> = {};
 
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
 
-/* ── Single video card ──────────────────────────────────────── */
+/* â”€â”€ Single video card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function VideoCard({ video, active, onShop }: { video: VideoItem; active: boolean; onShop: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [paused, setPaused] = useState(false);
@@ -80,7 +77,7 @@ function VideoCard({ video, active, onShop }: { video: VideoItem; active: boolea
               <svg width="32" height="32" viewBox="0 0 24 24" fill={WHITE} stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </div>
             <div style={{ fontSize:14, color:"rgba(255,255,255,0.5)", textAlign:"center", padding:"0 40px" }}>
-              No videos yet — be the first to post
+              No videos yet â€” be the first to post
             </div>
           </div>
         </div>
@@ -108,7 +105,7 @@ function VideoCard({ video, active, onShop }: { video: VideoItem; active: boolea
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
               <div>
                 <div style={{ fontSize:9, color:"rgba(255,255,255,0.65)" }}>Tap to shop</div>
-                <div style={{ fontSize:11, fontWeight:600, color:WHITE }}>{video.product} · {video.price}</div>
+                <div style={{ fontSize:11, fontWeight:600, color:WHITE }}>{video.product} Â· {video.price}</div>
               </div>
             </button>
           )}
@@ -128,7 +125,7 @@ function VideoCard({ video, active, onShop }: { video: VideoItem; active: boolea
               icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
               label: "Share",
               action: () => {
-                const msg = encodeURIComponent(`Check this out on Maizu! @${video.vendor} — ${video.caption}\n\nhttps://maizu.vercel.app`);
+                const msg = encodeURIComponent(`Check this out on Maizu! @${video.vendor} â€” ${video.caption}\n\nhttps://maizu.vercel.app`);
                 window.open(`https://wa.me/?text=${msg}`, "_blank");
               },
             },
@@ -151,9 +148,9 @@ function VideoCard({ video, active, onShop }: { video: VideoItem; active: boolea
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    DISCOVERY PAGE
-══════════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function DiscoveryPage() {
   const router = useRouter();
   const { isLoggedIn, authUser, profile } = useAuth();
@@ -164,7 +161,6 @@ export default function DiscoveryPage() {
   const [videos,     setVideos]     = useState<VideoItem[]>(globalVideos);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [showAdd,    setShowAdd]    = useState(false);
-  const [uploading,  setUploading]  = useState(false);
   const [caption,    setCaption]    = useState("");
   const [product,    setProduct]    = useState("");
   const [price,      setPrice]      = useState("");
@@ -208,7 +204,7 @@ export default function DiscoveryPage() {
       createdAt: Date.now(),
     };
 
-    /* Add to global store — persists between navigations */
+    /* Add to global store â€” persists between navigations */
     globalVideos = [newVideo, ...globalVideos];
     setVideos([...globalVideos]);
     setDraftUrl(null);
@@ -314,7 +310,7 @@ export default function DiscoveryPage() {
             <div style={{ padding:"16px", flex:1, display:"flex", flexDirection:"column", gap:12 }}>
               <div>
                 <label style={{ fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.7)", display:"block", marginBottom:6 }}>Caption</label>
-                <textarea value={caption} onChange={e => setCaption(e.target.value)} placeholder="Describe your product or video…" rows={3}
+                <textarea value={caption} onChange={e => setCaption(e.target.value)} placeholder="Describe your product or videoâ€¦" rows={3}
                   style={{ width:"100%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, padding:"10px 12px", fontSize:13, color:WHITE, outline:"none", resize:"none", boxSizing:"border-box" }} />
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -374,3 +370,5 @@ export default function DiscoveryPage() {
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { C } from "@/utils/constants";
@@ -40,7 +40,7 @@ const STATUS_CFG: Record<string, { color: string; bg: string; label: string }> =
   cancelled: { color: "#DC2626", bg: "#FEE2E2", label: "Cancelled" },
 };
 
-/* ── Order card with waybill action ────────────────────────── */
+/* â”€â”€ Order card with waybill action â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function OrderCard({ order, onWaybillSaved }: { order: Order; onWaybillSaved: (id: string, waybill: string) => void }) {
   const [showWaybill, setShowWaybill] = useState(false);
   const cfg = STATUS_CFG[order.status] || STATUS_CFG.pending;
@@ -53,7 +53,7 @@ function OrderCard({ order, onWaybillSaved }: { order: Order; onWaybillSaved: (i
             #{order.id.slice(0, 8).toUpperCase()}
           </div>
           <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-            {order.buyer_name || "Buyer"} · {new Date(order.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}
+            {order.buyer_name || "Buyer"} Â· {new Date(order.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -64,12 +64,12 @@ function OrderCard({ order, onWaybillSaved }: { order: Order; onWaybillSaved: (i
 
       {order.waybill_number ? (
         <div style={{ background: "#F0F9FF", borderRadius: 8, padding: "6px 10px", fontSize: 11, color: "#1D4ED8", fontWeight: 600 }}>
-          🚚 Waybill: {order.waybill_number}
+          ðŸšš Waybill: {order.waybill_number}
         </div>
       ) : order.status === "confirmed" ? (
         <button onClick={() => setShowWaybill(true)}
           style={{ width: "100%", background: "#7C3AED", color: "#fff", border: "none", borderRadius: 8, padding: "8px 0", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-          🚚 Add Waybill
+          ðŸšš Add Waybill
         </button>
       ) : null}
 
@@ -85,12 +85,12 @@ function OrderCard({ order, onWaybillSaved }: { order: Order; onWaybillSaved: (i
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   DASHBOARD — MY STORES
-══════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   DASHBOARD â€” MY STORES
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function DashboardStoresPage() {
   const router = useRouter();
-  const { profile, isLoggedIn, loading: authLoading } = useAuth();
+  const { isLoggedIn, loading: authLoading } = useAuth();
 
   const [stores,        setStores]        = useState<Store[]>([]);
   const [loading,       setLoading]       = useState(true);
@@ -158,7 +158,7 @@ export default function DashboardStoresPage() {
   if (authLoading || loading) {
     return (
       <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 13, color: C.gray }}>Loading your stores…</div>
+        <div style={{ fontSize: 13, color: C.gray }}>Loading your storesâ€¦</div>
       </div>
     );
   }
@@ -167,7 +167,7 @@ export default function DashboardStoresPage() {
     <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 40 }}>
       {/* Header */}
       <div style={{ background: "#fff", padding: "16px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 100 }}>
-        <button onClick={() => router.push("/dashboard")} style={{ background: "none", border: "none", fontSize: 20, color: C.dark, cursor: "pointer" }}>‹</button>
+        <button onClick={() => router.push("/dashboard")} style={{ background: "none", border: "none", fontSize: 20, color: C.dark, cursor: "pointer" }}>â€¹</button>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: C.dark }}>My Stores</div>
           <div style={{ fontSize: 11, color: C.gray }}>{stores.length} store{stores.length !== 1 ? "s" : ""}</div>
@@ -181,7 +181,7 @@ export default function DashboardStoresPage() {
       <div style={{ padding: "16px" }}>
         {stores.length === 0 ? (
           <div style={{ background: "#fff", borderRadius: 16, padding: "40px 20px", textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🏪</div>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>ðŸª</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 6 }}>No stores yet</div>
             <div style={{ fontSize: 12, color: C.gray, marginBottom: 20 }}>Open your first store and start selling on Maizu.</div>
             <button onClick={() => router.push("/dashboard/create-store")}
@@ -195,14 +195,14 @@ export default function DashboardStoresPage() {
               {/* Store header */}
               <div style={{ padding: "14px", display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 48, height: 48, borderRadius: 10, background: store.logo_url ? "transparent" : "#F3F4F6", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-                  {store.logo_url ? <img src={store.logo_url} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🏪"}
+                  {store.logo_url ? <img src={store.logo_url} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "ðŸª"}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>{store.name}</div>
-                    {store.is_trending && <span style={{ fontSize: 9, background: "#FFF3EF", color: C.primary, borderRadius: 20, padding: "1px 6px", fontWeight: 700 }}>🔥</span>}
+                    {store.is_trending && <span style={{ fontSize: 9, background: "#FFF3EF", color: C.primary, borderRadius: 20, padding: "1px 6px", fontWeight: 700 }}>ðŸ”¥</span>}
                   </div>
-                  <div style={{ fontSize: 11, color: C.gray }}>{store.category} · {store.product_count} products</div>
+                  <div style={{ fontSize: 11, color: C.gray }}>{store.category} Â· {store.product_count} products</div>
                 </div>
                 <span style={{ background: store.is_active ? "#D1FAE5" : "#FEE2E2", color: store.is_active ? "#059669" : "#DC2626", borderRadius: 20, padding: "3px 9px", fontSize: 10, fontWeight: 700 }}>
                   {store.is_active ? "Active" : "Inactive"}
@@ -235,7 +235,7 @@ export default function DashboardStoresPage() {
                 </button>
                 <button onClick={() => toggleStoreOrders(store.id)}
                   style={{ flex: 1, background: expandedStore === store.id ? C.primary : "#F3F4F6", color: expandedStore === store.id ? "#fff" : C.dark, border: "none", borderRadius: 8, padding: "8px 0", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                  Orders {expandedStore === store.id ? "▲" : "▾"}
+                  Orders {expandedStore === store.id ? "â–²" : "â–¾"}
                 </button>
               </div>
 
@@ -243,7 +243,7 @@ export default function DashboardStoresPage() {
               {expandedStore === store.id && (
                 <div style={{ padding: "0 14px 14px", borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
                   {loadingOrders === store.id ? (
-                    <div style={{ textAlign: "center", padding: "16px 0", fontSize: 12, color: C.gray }}>Loading orders…</div>
+                    <div style={{ textAlign: "center", padding: "16px 0", fontSize: 12, color: C.gray }}>Loading ordersâ€¦</div>
                   ) : (storeOrders[store.id]?.length || 0) === 0 ? (
                     <div style={{ textAlign: "center", padding: "16px 0", fontSize: 12, color: C.gray }}>No orders yet for this store.</div>
                   ) : (
@@ -260,3 +260,4 @@ export default function DashboardStoresPage() {
     </div>
   );
 }
+

@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { C } from "@/utils/constants";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -87,3 +86,4 @@ export default function HeartButton({
     </button>
   );
 }
+

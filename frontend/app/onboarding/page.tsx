@@ -1,10 +1,8 @@
-"use client";
+﻿"use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const PRIMARY = "#E8401C";
-const DARK    = "#0F0F0F";
-const MUTED   = "#71717A";
 const WHITE   = "#FFFFFF";
 
 const SLIDES = [
@@ -20,7 +18,7 @@ const SLIDES = [
       </svg>
     ),
     title:    "Welcome to Maizu",
-    sub:      "South Africa's marketplace for local entrepreneurs. Buy and sell anything — fashion, food, electronics, crafts and more.",
+    sub:      "South Africa's marketplace for local entrepreneurs. Buy and sell anything â€” fashion, food, electronics, crafts and more.",
     label:    "Maizu Business Hub",
   },
   {
@@ -36,7 +34,7 @@ const SLIDES = [
       </svg>
     ),
     title:    "Open your store free",
-    sub:      "Any South African can sell on Maizu. List your products, accept card payments and reach buyers across the country — all from your phone.",
+    sub:      "Any South African can sell on Maizu. List your products, accept card payments and reach buyers across the country â€” all from your phone.",
     label:    "Sell on Maizu",
   },
   {
@@ -139,7 +137,7 @@ export default function OnboardingPage() {
 
         {/* CTA */}
         <button onClick={next} style={{ width:"100%", background:slide.accent, color:WHITE, border:"none", borderRadius:16, padding:"16px 0", fontSize:16, fontWeight:700, cursor:"pointer", boxShadow:`0 8px 24px ${slide.accent}55` }}>
-          {isLast ? "Get started →" : "Next →"}
+          {isLast ? "Get started â†’" : "Next â†’"}
         </button>
 
         {/* Login link */}
@@ -152,3 +150,4 @@ export default function OnboardingPage() {
     </div>
   );
 }
+

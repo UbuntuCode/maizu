@@ -1,19 +1,17 @@
-"use client";
+﻿"use client";
 import React, { Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { C } from "@/utils/constants";
 import BottomNav from "@/components/navigation/BottomNav";
 
 function PaymentCancelContent() {
   const router       = useRouter();
-  const searchParams = useSearchParams();
-  const orderId      = searchParams.get("order_id");
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px", paddingBottom: 80 }}>
 
       <div style={{ width: 100, height: 100, borderRadius: "50%", background: "#FEE2E2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, marginBottom: 24 }}>
-        😔
+        ðŸ˜”
       </div>
 
       <div style={{ fontSize: 24, fontWeight: 900, color: C.dark, marginBottom: 10, textAlign: "center" }}>
@@ -27,9 +25,9 @@ function PaymentCancelContent() {
       <div style={{ background: "#fff", borderRadius: 16, padding: "16px", width: "100%", maxWidth: 380, marginBottom: 24 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 10 }}>What would you like to do?</div>
         <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.7 }}>
-          • Try paying again with a different payment method<br />
-          • Go back to your cart and review your order<br />
-          • Contact support if you had an issue
+          â€¢ Try paying again with a different payment method<br />
+          â€¢ Go back to your cart and review your order<br />
+          â€¢ Contact support if you had an issue
         </div>
       </div>
 
@@ -50,7 +48,7 @@ function PaymentCancelContent() {
   );
 }
 
-/* DEFAULT EXPORT — wraps content in Suspense */
+/* DEFAULT EXPORT â€” wraps content in Suspense */
 export default function PaymentCancelPage() {
   return (
     <Suspense fallback={<div style={{ minHeight: "100vh", background: C.bg }} />}>
@@ -58,3 +56,5 @@ export default function PaymentCancelPage() {
     </Suspense>
   );
 }
+
+

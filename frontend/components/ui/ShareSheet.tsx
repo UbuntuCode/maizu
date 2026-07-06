@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect } from "react";
 import { C } from "@/utils/constants";
 
-/* ── Types ──────────────────────────────────────────────────── */
+/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 interface ShareSheetProps {
   url:      string;
   title:    string;
@@ -10,9 +10,9 @@ interface ShareSheetProps {
   onClose:  () => void;
 }
 
-/* ── Individual share option ────────────────────────────────── */
+/* â”€â”€ Individual share option â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const ShareOption = ({
-  icon, label, color, bg, onClick,
+  icon, label, bg, onClick,
 }: {
   icon:    string;
   label:   string;
@@ -47,9 +47,9 @@ const ShareOption = ({
   </button>
 );
 
-/* ══════════════════════════════════════════════════════════════
-   SHARE SHEET — bottom drawer that slides up
-══════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   SHARE SHEET â€” bottom drawer that slides up
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function ShareSheet({ url, title, message, onClose }: ShareSheetProps) {
   const [copied, setCopied] = useState(false);
 
@@ -64,7 +64,7 @@ export default function ShareSheet({ url, title, message, onClose }: ShareSheetP
   const encodedMsg  = encodeURIComponent(`${message}\n\n${fullUrl}`);
   const encodedText = encodeURIComponent(message);
 
-  /* ── Share handlers ── */
+  /* â”€â”€ Share handlers â”€â”€ */
   const shareWhatsApp = () => {
     window.open(`https://wa.me/?text=${encodedMsg}`, "_blank");
     onClose();
@@ -152,23 +152,23 @@ export default function ShareSheet({ url, title, message, onClose }: ShareSheetP
         {/* Share options */}
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
           <ShareOption
-            icon="💬" label="WhatsApp" color="#25D366" bg="#E9FBF0"
+            icon="ðŸ’¬" label="WhatsApp" color="#25D366" bg="#E9FBF0"
             onClick={shareWhatsApp}
           />
           <ShareOption
-            icon="📘" label="Facebook" color="#1877F2" bg="#E7F0FD"
+            icon="ðŸ“˜" label="Facebook" color="#1877F2" bg="#E7F0FD"
             onClick={shareFacebook}
           />
           <ShareOption
-            icon="🐦" label="Twitter/X" color="#1DA1F2" bg="#E8F5FD"
+            icon="ðŸ¦" label="Twitter/X" color="#1DA1F2" bg="#E8F5FD"
             onClick={shareTwitter}
           />
           <ShareOption
-            icon="✈️" label="Telegram" color="#0088CC" bg="#E3F4FC"
+            icon="âœˆï¸" label="Telegram" color="#0088CC" bg="#E3F4FC"
             onClick={shareTelegram}
           />
           <ShareOption
-            icon="📧" label="Email" color="#EA4335" bg="#FEEBEA"
+            icon="ðŸ“§" label="Email" color="#EA4335" bg="#FEEBEA"
             onClick={shareEmail}
           />
         </div>
@@ -182,7 +182,7 @@ export default function ShareSheet({ url, title, message, onClose }: ShareSheetP
             onClick={copyLink}
             style={{ background: copied ? "#E1F5EE" : C.primary, color: copied ? "#065F46" : "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0, transition: "all 0.2s" }}
           >
-            {copied ? "✓ Copied!" : "Copy"}
+            {copied ? "âœ“ Copied!" : "Copy"}
           </button>
         </div>
 
@@ -192,7 +192,7 @@ export default function ShareSheet({ url, title, message, onClose }: ShareSheetP
             onClick={shareNative}
             style={{ width: "100%", background: C.softOrange, color: C.primary, border: `1.5px solid ${C.primary}33`, borderRadius: 14, padding: "12px 0", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
           >
-            📤 More sharing options…
+            ðŸ“¤ More sharing optionsâ€¦
           </button>
         )}
       </div>
@@ -200,9 +200,9 @@ export default function ShareSheet({ url, title, message, onClose }: ShareSheetP
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SHARE BUTTON — small trigger button for any page
-══════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   SHARE BUTTON â€” small trigger button for any page
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export function ShareButton({
   url, title, message, style, label = "Share",
 }: {
@@ -233,7 +233,7 @@ export function ShareButton({
           ...style,
         }}
       >
-        ↗ {label}
+        â†— {label}
       </button>
 
       {open && (
@@ -248,9 +248,9 @@ export function ShareButton({
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   WHATSAPP QUICK BUTTON — single-tap WhatsApp share
-══════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   WHATSAPP QUICK BUTTON â€” single-tap WhatsApp share
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export function WhatsAppButton({
   url, message, style,
 }: {
@@ -279,7 +279,8 @@ export function WhatsAppButton({
         ...style,
       }}
     >
-      💬 Share on WhatsApp
+      ðŸ’¬ Share on WhatsApp
     </button>
   );
 }
+

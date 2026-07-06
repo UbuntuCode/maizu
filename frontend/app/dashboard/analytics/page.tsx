@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
 import { C } from "@/utils/constants";
 import { useAuth } from "@/context/AuthContext";
@@ -14,7 +14,7 @@ import BottomNav from "@/components/navigation/BottomNav";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-/* ── Types ──────────────────────────────────────────────────── */
+/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 interface AnalyticsData {
   summary: {
     total_revenue:     number;
@@ -37,7 +37,7 @@ interface AnalyticsData {
   stores: { id: string; name: string; product_count: number; follower_count: number; rating: number }[];
 }
 
-/* ── Colors ─────────────────────────────────────────────────── */
+/* â”€â”€ Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const STATUS_COLORS: Record<string, string> = {
   pending:   "#F59E0B",
   confirmed: "#3B82F6",
@@ -48,7 +48,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CHART_COLORS = ["#E8401C", "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6"];
 
-/* ── Stat card ──────────────────────────────────────────────── */
+/* â”€â”€ Stat card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const StatCard = ({
   emoji, label, value, sub, subColor = C.gray, trend,
 }: {
@@ -61,7 +61,7 @@ const StatCard = ({
       </div>
       {trend !== undefined && (
         <div style={{ fontSize: 11, fontWeight: 700, color: trend >= 0 ? "#10B981" : "#EF4444", background: trend >= 0 ? "#D1FAE5" : "#FEE2E2", borderRadius: 20, padding: "2px 7px" }}>
-          {trend >= 0 ? "▲" : "▼"} {Math.abs(trend)}%
+          {trend >= 0 ? "â–²" : "â–¼"} {Math.abs(trend)}%
         </div>
       )}
     </div>
@@ -71,7 +71,7 @@ const StatCard = ({
   </div>
 );
 
-/* ── Section header ─────────────────────────────────────────── */
+/* â”€â”€ Section header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
   <div style={{ marginBottom: 14 }}>
     <div style={{ fontSize: 15, fontWeight: 800, color: C.dark }}>{title}</div>
@@ -79,7 +79,7 @@ const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
   </div>
 );
 
-/* ── Custom tooltip ─────────────────────────────────────────── */
+/* â”€â”€ Custom tooltip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
@@ -94,14 +94,14 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-/* ── Skeleton ───────────────────────────────────────────────── */
+/* â”€â”€ Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const Skel = ({ h = 12, w = "100%", r = 6 }: { h?: number; w?: string | number; r?: number }) => (
   <div style={{ height: h, width: w, borderRadius: r, background: "#F0F0F0", animation: "pulse 1.5s ease-in-out infinite" }} />
 );
 
-/* ══════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    ANALYTICS PAGE
-══════════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function AnalyticsPage() {
   const router = useRouter();
   const { isLoggedIn, loading: authLoading } = useAuth();
@@ -158,7 +158,7 @@ export default function AnalyticsPage() {
   if (error) {
     return (
       <div style={{ background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, gap: 16 }}>
-        <div style={{ fontSize: 40 }}>⚠️</div>
+        <div style={{ fontSize: 40 }}>âš ï¸</div>
         <div style={{ fontSize: 14, color: C.dark, textAlign: "center" }}>{error}</div>
         <button onClick={() => window.location.reload()} style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 22, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Retry</button>
         <BottomNav />
@@ -181,7 +181,7 @@ export default function AnalyticsPage() {
       <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 90 }}>
         <Header />
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" }}>
-          <div style={{ fontSize: 52, marginBottom: 16 }}>📊</div>
+          <div style={{ fontSize: 52, marginBottom: 16 }}>ðŸ“Š</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: C.dark, marginBottom: 8 }}>No stores yet</div>
           <div style={{ fontSize: 13, color: C.gray, marginBottom: 24, maxWidth: 280 }}>Create your first store to start seeing analytics and revenue data here.</div>
           <button onClick={() => router.push("/dashboard/create-store")} style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 22, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
@@ -200,43 +200,43 @@ export default function AnalyticsPage() {
 
       {/* Page header */}
       <div style={{ background: C.white, padding: "18px 16px 16px", borderBottom: `1px solid ${C.border}` }}>
-        <button onClick={() => router.push("/dashboard")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: C.dark, padding: 0, marginBottom: 8 }}>‹ Dashboard</button>
+        <button onClick={() => router.push("/dashboard")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: C.dark, padding: 0, marginBottom: 8 }}>â€¹ Dashboard</button>
         <div style={{ fontSize: 22, fontWeight: 900, color: C.dark }}>Analytics</div>
         <div style={{ fontSize: 12, color: C.gray }}>Your business performance at a glance</div>
       </div>
 
       <div style={{ padding: "16px 16px 0" }}>
 
-        {/* ── Summary stats 2x2 ── */}
+        {/* â”€â”€ Summary stats 2x2 â”€â”€ */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
           <StatCard
-            emoji="💰" label="Total Revenue"
+            emoji="ðŸ’°" label="Total Revenue"
             value={`R${Number(s?.total_revenue || 0).toFixed(2)}`}
             sub={`This week: R${Number(s?.this_week_revenue || 0).toFixed(2)}`}
             trend={Number(growth)}
           />
           <StatCard
-            emoji="📦" label="Total Orders"
+            emoji="ðŸ“¦" label="Total Orders"
             value={String(s?.total_orders || 0)}
             sub={`This week: ${s?.orders_this_week || 0} orders`}
             subColor={C.primary}
           />
           <StatCard
-            emoji="🏷️" label="Products Listed"
+            emoji="ðŸ·ï¸" label="Products Listed"
             value={String(s?.total_products || 0)}
             sub="Across all stores"
           />
           <StatCard
-            emoji="👥" label="Store Followers"
+            emoji="ðŸ‘¥" label="Store Followers"
             value={String(s?.total_followers || 0)}
             sub="Total across all stores"
             subColor="#8B5CF6"
           />
         </div>
 
-        {/* ── This week vs last week ── */}
+        {/* â”€â”€ This week vs last week â”€â”€ */}
         <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 14 }}>📅 This Week vs Last Week</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 14 }}>ðŸ“… This Week vs Last Week</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {[
               { label: "Revenue this week",  val: `R${Number(s?.this_week_revenue || 0).toFixed(2)}`,  color: C.primary },
@@ -253,23 +253,23 @@ export default function AnalyticsPage() {
 
           {/* Growth indicator */}
           <div style={{ marginTop: 12, background: growth >= 0 ? "#D1FAE5" : "#FEE2E2", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 20 }}>{growth >= 0 ? "📈" : "📉"}</span>
+            <span style={{ fontSize: 20 }}>{growth >= 0 ? "ðŸ“ˆ" : "ðŸ“‰"}</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: growth >= 0 ? "#065F46" : "#7F1D1D" }}>
                 {growth >= 0 ? "+" : ""}{growth}% revenue {growth >= 0 ? "growth" : "decline"} this week
               </div>
               <div style={{ fontSize: 11, color: growth >= 0 ? "#059669" : "#DC2626" }}>
-                {growth >= 0 ? "Great work! Keep it up 🚀" : "Try promoting your products to boost sales"}
+                {growth >= 0 ? "Great work! Keep it up ðŸš€" : "Try promoting your products to boost sales"}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Revenue chart ── */}
+        {/* â”€â”€ Revenue chart â”€â”€ */}
         <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>
-              {chartType === "revenue" ? "💰 Revenue" : "📦 Orders"} Over Time
+              {chartType === "revenue" ? "ðŸ’° Revenue" : "ðŸ“¦ Orders"} Over Time
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               {/* Revenue / Orders toggle */}
@@ -292,7 +292,7 @@ export default function AnalyticsPage() {
 
           {chartData.length === 0 ? (
             <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", color: C.gray, fontSize: 13 }}>
-              No data yet — orders will appear here
+              No data yet â€” orders will appear here
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
@@ -323,10 +323,10 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        {/* ── Orders by status ── */}
+        {/* â”€â”€ Orders by status â”€â”€ */}
         {charts?.orders_by_status && charts.orders_by_status.length > 0 && (
           <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 20 }}>
-            <SectionHead title="📋 Orders by Status" />
+            <SectionHead title="ðŸ“‹ Orders by Status" />
             <div style={{ display: "flex", gap: 10 }}>
               {/* Pie chart */}
               <div style={{ flex: 1 }}>
@@ -358,10 +358,10 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* ── Top products ── */}
+        {/* â”€â”€ Top products â”€â”€ */}
         {charts?.top_products && charts.top_products.length > 0 && (
           <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 20 }}>
-            <SectionHead title="🏆 Top Products by Revenue" sub="Your best selling products" />
+            <SectionHead title="ðŸ† Top Products by Revenue" sub="Your best selling products" />
             <div style={{ marginBottom: 14 }}>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={charts.top_products} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} layout="vertical">
@@ -369,7 +369,7 @@ export default function AnalyticsPage() {
                   <XAxis type="number" tick={{ fontSize: 9, fill: C.gray }} tickLine={false} axisLine={false}
                     tickFormatter={v => `R${v}`} />
                   <YAxis type="category" dataKey="product_name" tick={{ fontSize: 9, fill: C.gray }} tickLine={false} axisLine={false} width={80}
-                    tickFormatter={v => v.length > 12 ? v.slice(0, 12) + "…" : v} />
+                    tickFormatter={v => v.length > 12 ? v.slice(0, 12) + "â€¦" : v} />
                   <Tooltip formatter={val => [`R${Number(val).toFixed(2)}`, "Revenue"]} />
                   <Bar dataKey="revenue" fill={C.primary} radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -392,10 +392,10 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* ── Revenue by store ── */}
+        {/* â”€â”€ Revenue by store â”€â”€ */}
         {charts?.revenue_by_store && charts.revenue_by_store.length > 1 && (
           <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 20 }}>
-            <SectionHead title="🏪 Revenue by Store" />
+            <SectionHead title="ðŸª Revenue by Store" />
             {charts.revenue_by_store.map((store, i) => {
               const maxRevenue = Math.max(...charts.revenue_by_store.map(s => s.revenue));
               const pct = maxRevenue > 0 ? (store.revenue / maxRevenue) * 100 : 0;
@@ -415,26 +415,26 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* ── My Stores overview ── */}
+        {/* â”€â”€ My Stores overview â”€â”€ */}
         {data?.stores && data.stores.length > 0 && (
           <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 20 }}>
-            <SectionHead title="🏪 My Stores Overview" />
+            <SectionHead title="ðŸª My Stores Overview" />
             {data.stores.map(store => (
               <div key={store.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: C.softOrange, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
-                 {(store as any).logo_url ? <img src={(store as any).logo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🏪"}
+                 {(store as any).logo_url ? <img src={(store as any).logo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "ðŸª"}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>{store.name}</div>
                   <div style={{ fontSize: 11, color: C.gray }}>
-                    {store.product_count} products · {store.follower_count} followers · ⭐ {Number(store.rating).toFixed(1)}
+                    {store.product_count} products Â· {store.follower_count} followers Â· â­ {Number(store.rating).toFixed(1)}
                   </div>
                 </div>
                 <button
                   onClick={() => router.push(`/dashboard/stores/${store.id}`)}
                   style={{ background: C.softOrange, color: C.primary, border: "none", borderRadius: 20, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
                 >
-                  Manage →
+                  Manage â†’
                 </button>
               </div>
             ))}
@@ -446,3 +446,4 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
