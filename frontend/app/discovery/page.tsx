@@ -190,7 +190,7 @@ export default function DiscoveryPage() {
 
   const handlePublish = () => {
     if (!draftUrl) return;
-    const vendorName = profile?.full_name || (authUser as any)?.user_metadata?.full_name || "You";
+    const vendorName = profile?.full_name || (authUser?.user_metadata?.full_name as string | undefined) || "You";
     const newVideo: VideoItem = {
       id:        `local-${Date.now()}`,
       url:       draftUrl,
@@ -370,5 +370,6 @@ export default function DiscoveryPage() {
     </div>
   );
 }
+
 
 

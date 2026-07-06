@@ -1,17 +1,17 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase";
 
 /*
-  Open Store — rebuilt from scratch so it can never hang on a loading screen.
+  Open Store â€” rebuilt from scratch so it can never hang on a loading screen.
 
   Why the old one didn't load: it waited on the AuthContext "loading" state,
   which sometimes never resolves. This version talks to Supabase directly,
-  with a 6-second timeout — you always see either the form, a sign-in
+  with a 6-second timeout â€” you always see either the form, a sign-in
   prompt, or a clear error message. Never a blank page.
 
-  3 steps: Details → Logo (optional) → Review & Launch.
+  3 steps: Details â†’ Logo (optional) â†’ Review & Launch.
   Logo upload uses your Cloudinary unsigned preset (same as create-product).
 */
 
@@ -45,7 +45,7 @@ export default function CreateStorePage() {
   const [busy, setBusy]         = useState(false);
   const [error, setError]       = useState("");
 
-  /* ── Auth check that cannot hang: direct call + 6s timeout ── */
+  /* â”€â”€ Auth check that cannot hang: direct call + 6s timeout â”€â”€ */
   useEffect(() => {
     let settled = false;
     const timer = setTimeout(() => {
@@ -86,7 +86,7 @@ export default function CreateStorePage() {
     fd.append("upload_preset", UPLOAD_PRESET);
     const res  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
     const data = await res.json();
-    if (!res.ok) throw new Error("Logo upload failed — you can skip the logo and add it later.");
+    if (!res.ok) throw new Error("Logo upload failed â€” you can skip the logo and add it later.");
     return data.secure_url;
   };
 
@@ -113,8 +113,8 @@ export default function CreateStorePage() {
       await supabase.from("users").update({ role: "vendor" }).eq("id", userId);
 
       router.push(data?.id ? `/dashboard/stores/${data.id}` : "/dashboard");
-    } catch (e: any) {
-      setError(e.message || "Could not create the store. Please try again.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not create the store. Please try again.");
       setBusy(false);
     }
   };
@@ -128,12 +128,12 @@ export default function CreateStorePage() {
     <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 18, padding: 24 }}>{children}</div>
   );
 
-  /* ── Auth gates: always show SOMETHING, never blank ── */
+  /* â”€â”€ Auth gates: always show SOMETHING, never blank â”€â”€ */
   if (authState === "checking") {
     return (
       <Shell>
         <div style={{ textAlign: "center", padding: "70px 20px", color: T.sub, fontSize: 14 }}>
-          Checking your account…
+          Checking your accountâ€¦
         </div>
       </Shell>
     );
@@ -173,7 +173,7 @@ export default function CreateStorePage() {
     );
   }
 
-  /* ── Wizard ── */
+  /* â”€â”€ Wizard â”€â”€ */
   const steps = ["Store details", "Logo", "Review & launch"];
 
   return (
@@ -283,14 +283,14 @@ export default function CreateStorePage() {
             )}
             <div>
               <div style={{ fontSize: 17, fontWeight: 800, color: T.ink }}>{name}</div>
-              <div style={{ fontSize: 12.5, color: T.sub }}>{category}{city.trim() ? ` · ${city.trim()}` : ""}</div>
+              <div style={{ fontSize: 12.5, color: T.sub }}>{category}{city.trim() ? ` Â· ${city.trim()}` : ""}</div>
             </div>
           </div>
           {desc.trim() && <div style={{ fontSize: 13.5, color: T.sub, padding: "14px 0 2px" }}>{desc.trim()}</div>}
 
           <button onClick={launch} disabled={busy}
             style={{ marginTop: 20, width: "100%", background: busy ? "#F0A18E" : T.primary, color: "#fff", border: "none", borderRadius: 12, padding: "14px 0", fontSize: 15, fontWeight: 800, cursor: busy ? "default" : "pointer" }}>
-            {busy ? "Creating your store…" : "Launch my store"}
+            {busy ? "Creating your storeâ€¦" : "Launch my store"}
           </button>
         </Card>
       )}
@@ -305,3 +305,5 @@ function Shell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+

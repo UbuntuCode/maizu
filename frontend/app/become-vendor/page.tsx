@@ -24,7 +24,7 @@ export default function BecomeVendorPage() {
   const [busy,  setBusy]  = useState(false);
   const [error, setError] = useState("");
 
-  const p = profile as any;
+  const p = profile as { role?: string } | null;
   const alreadyVendor = p?.role === "vendor" || p?.role === "admin";
 
   useEffect(() => {
@@ -124,4 +124,6 @@ export default function BecomeVendorPage() {
     </div>
   );
 }
+
+
 

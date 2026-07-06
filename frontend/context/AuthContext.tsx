@@ -19,6 +19,7 @@ interface AuthContextType {
   isLoggedIn:     boolean;
   loading:        boolean;
   refreshProfile: () => Promise<void>;
+  signOut:        () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoggedIn:     false,
   loading:        false, /* default false â€” don't block anything */
   refreshProfile: async () => {},
+  signOut:        async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -50,6 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = useCallback(async () => {
     if (authUser) await fetchProfile(authUser.id);
   }, [authUser, fetchProfile]);
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    setAuthUser(null);
+    setSession(null);
+    setProfile(null);
+  }, []);
 
   useEffect(() => {
     /* Hard timeout â€” never block UI more than 2.5 seconds */
@@ -83,11 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile]);
 
   return (
-    <AuthContext.Provider value={{ authUser, session, profile, isLoggedIn: !!authUser, loading, refreshProfile }}>
+    <AuthContext.Provider value={{ authUser, session, profile, isLoggedIn: !!authUser, loading, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export const useAuth = () => useContext(AuthContext);
+
 

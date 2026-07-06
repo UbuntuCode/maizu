@@ -72,7 +72,7 @@ function SidebarSection({ title }: { title: string }) {
 export default function DesktopSidebar() {
   const router   = useRouter();
   const pathname = usePathname();
-  const { authUser, profile, signOut } = useAuth() as any;
+  const { authUser, profile, signOut } = useAuth();
 
   const role     = profile?.role || "buyer";
   const isVendor = role === "vendor" || role === "admin";
@@ -148,7 +148,7 @@ export default function DesktopSidebar() {
               </div>
             </div>
             <button
-              onClick={() => signOut?.()}
+              onClick={() => signOut()}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%",
                 padding: "10px 0", border: "none", borderRadius: 10, cursor: "pointer",
@@ -178,3 +178,6 @@ export default function DesktopSidebar() {
     </aside>
   );
 }
+
+
+

@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCart }   from "@/context/CartContext";
 import { useAuth }   from "@/context/AuthContext";
 
 const P      = "#E8401C";
-/* Darker shade for SMALL TEXT use — passes 4.5:1 contrast on white.
+/* Darker shade for SMALL TEXT use â€” passes 4.5:1 contrast on white.
    Keep #E8401C only for large/bold accents (banners, big CTAs). */
 const P_TEXT = "#C7350F";
 const DARK   = "#0F0F0F";
@@ -44,7 +44,7 @@ const ImageSearchModal = ({ onClose }: { onClose: () => void }) => {
         {preview ? (
           <div style={{ textAlign:"center" }}>
             <img src={preview} alt="Selected product photo preview" style={{ width:"100%", maxHeight:200, objectFit:"contain", borderRadius:10, marginBottom:12 }} />
-            {searching && <div style={{ fontSize:13, color:P_TEXT, fontWeight:600 }} role="status">Finding similar products…</div>}
+            {searching && <div style={{ fontSize:13, color:P_TEXT, fontWeight:600 }} role="status">Finding similar productsâ€¦</div>}
           </div>
         ) : (
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -80,7 +80,7 @@ export default function Header() {
   };
 
   const firstName = profile?.full_name?.split(" ")[0]
-    || (authUser as any)?.user_metadata?.full_name?.split(" ")[0]
+    || (authUser?.user_metadata?.full_name as string | undefined)?.split(" ")[0]
     || null;
 
   return (
@@ -119,7 +119,7 @@ export default function Header() {
             id="header-search-input"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search products, stores…"
+            placeholder="Search products, storesâ€¦"
             style={{ flex:1, background:"none", border:"none", outline:"none", padding:"0 8px", fontSize:13, color:DARK, minWidth:0 }}
           />
           {/* Touch target enlarged to 24x24 minimum via padding */}
@@ -177,3 +177,4 @@ export default function Header() {
     </>
   );
 }
+

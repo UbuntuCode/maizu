@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { C } from "@/utils/constants";
@@ -31,7 +31,7 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: "#EF4444",
 };
 
-/* ── Stat Card ──────────────────────────────────────────────── */
+/* â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const StatCard = ({ emoji, label, value, sub, subGreen = false }: { emoji: string; label: string; value: string; sub?: string; subGreen?: boolean }) => (
   <div style={{ background: C.white, borderRadius: 16, padding: "14px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
     <div style={{ width: 40, height: 40, borderRadius: 10, background: C.softOrange, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginBottom: 10 }}>
@@ -43,8 +43,8 @@ const StatCard = ({ emoji, label, value, sub, subGreen = false }: { emoji: strin
   </div>
 );
 
-/* ── Mini bar chart ─────────────────────────────────────────── */
-const MiniBar = ({ data, valueKey, color = C.primary }: { data: any[]; valueKey: string; color?: string }) => {
+/* â”€â”€ Mini bar chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+const MiniBar = ({ data, valueKey, color = C.primary }: { data: Record<string, string | number>[]; valueKey: string; color?: string }) => {
   const max = Math.max(...data.map(d => Number(d[valueKey])), 1);
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 48 }}>
@@ -55,9 +55,9 @@ const MiniBar = ({ data, valueKey, color = C.primary }: { data: any[]; valueKey:
   );
 };
 
-/* ══════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    ADMIN OVERVIEW PAGE
-══════════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function AdminPage() {
   const router = useRouter();
   const { profile, isLoggedIn, loading: authLoading } = useAuth();
@@ -89,7 +89,7 @@ export default function AdminPage() {
   if (authLoading || loading) {
     return (
       <div style={{ background: "#111", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 13, color: "#aaa" }}>Loading admin panel…</div>
+        <div style={{ fontSize: 13, color: "#aaa" }}>Loading admin panelâ€¦</div>
       </div>
     );
   }
@@ -99,11 +99,11 @@ export default function AdminPage() {
       {/* Admin header */}
       <div style={{ background: C.dark, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #333" }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: "#fff" }}>⚡ Maizu Admin</div>
+          <div style={{ fontSize: 18, fontWeight: 900, color: "#fff" }}>âš¡ Maizu Admin</div>
           <div style={{ fontSize: 11, color: "#888" }}>Platform management</div>
         </div>
         <button onClick={() => router.push("/dashboard")} style={{ background: "#333", color: "#aaa", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, cursor: "pointer" }}>
-          ← Back to App
+          â† Back to App
         </button>
       </div>
 
@@ -113,16 +113,16 @@ export default function AdminPage() {
 
         {/* Stats grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
-          <StatCard emoji="👥" label="Total Users"   value={stats?.total_users?.toString() || "0"}   sub={`+${stats?.new_users_7d || 0} this week`}  subGreen />
-          <StatCard emoji="🏪" label="Active Stores" value={stats?.total_stores?.toString() || "0"}  />
-          <StatCard emoji="📦" label="Total Orders"  value={stats?.total_orders?.toString() || "0"}  sub={`+${stats?.new_orders_7d || 0} this week`} subGreen />
-          <StatCard emoji="💰" label="Total Revenue" value={`R${Number(stats?.total_revenue || 0).toFixed(0)}`} />
+          <StatCard emoji="ðŸ‘¥" label="Total Users"   value={stats?.total_users?.toString() || "0"}   sub={`+${stats?.new_users_7d || 0} this week`}  subGreen />
+          <StatCard emoji="ðŸª" label="Active Stores" value={stats?.total_stores?.toString() || "0"}  />
+          <StatCard emoji="ðŸ“¦" label="Total Orders"  value={stats?.total_orders?.toString() || "0"}  sub={`+${stats?.new_orders_7d || 0} this week`} subGreen />
+          <StatCard emoji="ðŸ’°" label="Total Revenue" value={`R${Number(stats?.total_revenue || 0).toFixed(0)}`} />
         </div>
 
         {/* Signups chart */}
         {charts?.signups && charts.signups.length > 0 && (
           <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 12 }}>📈 User Signups — Last 14 Days</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 12 }}>ðŸ“ˆ User Signups â€” Last 14 Days</div>
             <MiniBar data={charts.signups} valueKey="count" color={C.primary} />
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: C.gray, marginTop: 4 }}>
               <span>{new Date(charts.signups[0]?.day).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}</span>
@@ -134,7 +134,7 @@ export default function AdminPage() {
         {/* Revenue chart */}
         {charts?.revenue && charts.revenue.length > 0 && (
           <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 12 }}>💰 Revenue — Last 14 Days</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 12 }}>ðŸ’° Revenue â€” Last 14 Days</div>
             <MiniBar data={charts.revenue} valueKey="revenue" color="#10B981" />
           </div>
         )}
@@ -142,7 +142,7 @@ export default function AdminPage() {
         {/* Orders by status */}
         {charts?.order_status && charts.order_status.length > 0 && (
           <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 12 }}>📋 Orders by Status</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 12 }}>ðŸ“‹ Orders by Status</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {charts.order_status.map(s => {
                 const total = charts.order_status.reduce((sum, x) => sum + Number(x.count), 0);
@@ -167,14 +167,14 @@ export default function AdminPage() {
         {charts?.top_stores && charts.top_stores.length > 0 && (
           <div style={{ background: C.white, borderRadius: 16, padding: "16px", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>🏆 Top Stores by Revenue</div>
-              <button onClick={() => router.push("/admin/stores")} style={{ fontSize: 11, color: C.primary, background: "none", border: "none", cursor: "pointer" }}>See all →</button>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>ðŸ† Top Stores by Revenue</div>
+              <button onClick={() => router.push("/admin/stores")} style={{ fontSize: 11, color: C.primary, background: "none", border: "none", cursor: "pointer" }}>See all â†’</button>
             </div>
             {charts.top_stores.map((store, i) => (
               <div key={store.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
                 <div style={{ width: 24, height: 24, borderRadius: "50%", background: C.softOrange, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: C.primary, flexShrink: 0 }}>{i + 1}</div>
                 <div style={{ width: 32, height: 32, borderRadius: 8, background: "#F3F4F6", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {store.logo_url ? <img src={store.logo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🏪"}
+                  {store.logo_url ? <img src={store.logo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "ðŸª"}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: C.dark }}>{store.name}</div>
@@ -189,10 +189,10 @@ export default function AdminPage() {
         {/* Quick links */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
-            { label: "Manage Users",  emoji: "👥", path: "/admin/users"  },
-            { label: "Manage Stores", emoji: "🏪", path: "/admin/stores" },
-            { label: "All Orders",    emoji: "📦", path: "/admin/orders" },
-            { label: "Back to App",   emoji: "🏠", path: "/dashboard"   },
+            { label: "Manage Users",  emoji: "ðŸ‘¥", path: "/admin/users"  },
+            { label: "Manage Stores", emoji: "ðŸª", path: "/admin/stores" },
+            { label: "All Orders",    emoji: "ðŸ“¦", path: "/admin/orders" },
+            { label: "Back to App",   emoji: "ðŸ ", path: "/dashboard"   },
           ].map(btn => (
             <button key={btn.path} onClick={() => router.push(btn.path)}
               style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 10px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
@@ -206,3 +206,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
