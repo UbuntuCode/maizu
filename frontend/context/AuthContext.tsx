@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
 import type { User, Session } from "@supabase/supabase-js";
@@ -9,7 +9,7 @@ interface UserProfile {
   email:       string;
   role:        string;
   avatar_url?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface AuthContextType {
@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   session:        null,
   profile:        null,
   isLoggedIn:     false,
-  loading:        false, /* default false — don't block anything */
+  loading:        false, /* default false â€” don't block anything */
   refreshProfile: async () => {},
 });
 
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [authUser, fetchProfile]);
 
   useEffect(() => {
-    /* Hard timeout — never block UI more than 2.5 seconds */
+    /* Hard timeout â€” never block UI more than 2.5 seconds */
     const timeout = setTimeout(() => setLoading(false), 2500);
 
     supabase.auth.getSession()
@@ -90,3 +90,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
+

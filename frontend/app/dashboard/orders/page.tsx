@@ -1,15 +1,32 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
 
 /*
-  Store Orders — working vendor order management.
+  Store Orders â€” working vendor order management.
   Loads every order that contains items from any of the vendor's stores,
   shows the buyer, items and total, and lets the vendor move the order
-  through: pending → confirmed → shipped → delivered (or cancel).
+  through: pending â†’ confirmed â†’ shipped â†’ delivered (or cancel).
 */
+
+interface OrderItem {
+  product_name: string;
+  quantity:     number;
+  subtotal:     number;
+  store_id:     string;
+  orders?:      StoreOrderRow | null;
+}
+interface StoreOrderRow {
+  id:         string;
+  status:     string;
+  total?:     number;
+  created_at: string;
+}
+interface StoreOrder extends StoreOrderRow {
+  items: OrderItem[];
+}
 
 const T = {
   primary: "#E8401C", primarySoft: "#FDEAE4",
@@ -33,9 +50,9 @@ const NEXT_LABEL: Record<string, string> = {
 
 export default function StoreOrdersPage() {
   const router = useRouter();
-  const { authUser } = useAuth() as any;
+  const { authUser } = useAuth();
 
-  const [orders, setOrders]   = useState<any[]>([]);
+  const [orders, setOrders]   = useState<StoreOrder[]>([]);
   const [filter, setFilter]   = useState("all");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId]   = useState("");
@@ -59,24 +76,24 @@ export default function StoreOrdersPage() {
       if (e2) throw e2;
 
       // Group items by order
-      const map = new Map<string, any>();
-      (items || []).forEach((it: any) => {
+      const map = new Map<string, StoreOrder>();
+      ((items || []) as unknown as OrderItem[]).forEach((it) => {
         const o = it.orders;
         if (!o) return;
         if (!map.has(o.id)) map.set(o.id, { ...o, items: [] });
-        map.get(o.id).items.push(it);
+        map.get(o.id)!.items.push(it);
       });
       const list = Array.from(map.values())
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setOrders(list);
-    } catch (e: any) {
-      setError(e.message || "Could not load orders.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not load orders.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [authUser]);
+  useEffect(() => { load(); }, [authUser]);
 
   const setStatus = async (orderId: string, status: string) => {
     setBusyId(orderId);
@@ -86,8 +103,8 @@ export default function StoreOrdersPage() {
         .from("orders").update({ status }).eq("id", orderId);
       if (e) throw e;
       setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)));
-    } catch (e: any) {
-      setError(e.message || "Could not update the order.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not update the order.");
     } finally {
       setBusyId("");
     }
@@ -138,7 +155,7 @@ export default function StoreOrdersPage() {
         )}
 
         {loading ? (
-          <div style={{ color: T.sub, fontSize: 14, padding: 30, textAlign: "center" }}>Loading your orders…</div>
+          <div style={{ color: T.sub, fontSize: 14, padding: 30, textAlign: "center" }}>Loading your ordersâ€¦</div>
         ) : shown.length === 0 ? (
           <div style={{ background: T.card, border: `1px dashed #D8D8D4`, borderRadius: 18, padding: "48px 20px", textAlign: "center" }}>
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#C9C9C5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto", display: "block" }}>
@@ -171,10 +188,10 @@ export default function StoreOrdersPage() {
                   </div>
 
                   <div style={{ borderTop: `1px solid ${T.border}`, margin: "12px 0", paddingTop: 12, display: "grid", gap: 6 }}>
-                    {o.items.map((it: any, i: number) => (
+                    {o.items.map((it, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
                         <span style={{ color: T.ink, fontWeight: 600 }}>
-                          {it.product_name} <span style={{ color: T.faint, fontWeight: 500 }}>× {it.quantity}</span>
+                          {it.product_name} <span style={{ color: T.faint, fontWeight: 500 }}>Ã— {it.quantity}</span>
                         </span>
                         <span style={{ color: T.sub }}>{fmtR(it.subtotal)}</span>
                       </div>
@@ -183,7 +200,7 @@ export default function StoreOrdersPage() {
 
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                     <div style={{ fontSize: 15, fontWeight: 800, color: T.ink }}>
-                      Total {fmtR(o.total ?? o.items.reduce((s: number, i: any) => s + Number(i.subtotal || 0), 0))}
+                      Total {fmtR(o.total ?? o.items.reduce((s: number, i) => s + Number(i.subtotal || 0), 0))}
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       {(o.status === "pending" || o.status === "confirmed") && (
@@ -195,7 +212,7 @@ export default function StoreOrdersPage() {
                       {next && (
                         <button disabled={busyId === o.id} onClick={() => setStatus(o.id, next)}
                           style={{ background: busyId === o.id ? "#F0A18E" : T.primary, color: "#fff", border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
-                          {busyId === o.id ? "Saving…" : NEXT_LABEL[o.status]}
+                          {busyId === o.id ? "Savingâ€¦" : NEXT_LABEL[o.status]}
                         </button>
                       )}
                     </div>
@@ -209,3 +226,5 @@ export default function StoreOrdersPage() {
     </div>
   );
 }
+
+
