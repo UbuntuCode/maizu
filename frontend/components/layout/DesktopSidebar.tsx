@@ -1,15 +1,13 @@
-"use client";
+﻿"use client";
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-
 /*
-  DesktopSidebar — left navigation for tablet/desktop.
-  - Official Maizu logo at the top (replaces plain text / emoji versions)
-  - Every link routes to a real, existing page
-  - "Open a store" goes to /dashboard/create-store (no more 404)
-  - Clean SVG icons throughout, no emojis
+  DesktopSidebar - left navigation for tablet/desktop.
+  Item/Section are declared at module scope (not inside the component)
+  so React preserves their identity across renders - fixes the
+  react-hooks/static-components errors and the state-reset behaviour.
 */
 
 const I = {
@@ -37,6 +35,40 @@ function Icon({ d, size = 18 }: { d: React.ReactNode; size?: number }) {
   );
 }
 
+/* Module-scope nav components - stable identity across renders */
+function SidebarItem({ path, icon, label, isActive, onNavigate }: {
+  path:       string;
+  icon:       React.ReactNode;
+  label:      string;
+  isActive:   boolean;
+  onNavigate: (p: string) => void;
+}) {
+  return (
+    <button
+      onClick={() => onNavigate(path)}
+      className="msb-item"
+      style={{
+        display: "flex", alignItems: "center", gap: 12, width: "100%",
+        padding: "10px 14px", border: "none", borderRadius: 10, cursor: "pointer",
+        background: isActive ? "#FDEAE4" : "transparent",
+        color: isActive ? "#E8401C" : "#3D4351",
+        fontSize: 14, fontWeight: isActive ? 700 : 500, textAlign: "left",
+      }}
+    >
+      <Icon d={icon} />
+      {label}
+    </button>
+  );
+}
+
+function SidebarSection({ title }: { title: string }) {
+  return (
+    <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1.6, color: "#9CA1AD", padding: "18px 14px 6px" }}>
+      {title}
+    </div>
+  );
+}
+
 export default function DesktopSidebar() {
   const router   = useRouter();
   const pathname = usePathname();
@@ -50,32 +82,6 @@ export default function DesktopSidebar() {
   const active = (p: string) =>
     p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(p + "/");
 
-  const Item = ({ path, icon, label }: { path: string; icon: React.ReactNode; label: string }) => {
-    const on = active(path);
-    return (
-      <button
-        onClick={() => go(path)}
-        className="msb-item"
-        style={{
-          display: "flex", alignItems: "center", gap: 12, width: "100%",
-          padding: "10px 14px", border: "none", borderRadius: 10, cursor: "pointer",
-          background: on ? "#FDEAE4" : "transparent",
-          color: on ? "#E8401C" : "#3D4351",
-          fontSize: 14, fontWeight: on ? 700 : 500, textAlign: "left",
-        }}
-      >
-        <Icon d={icon} />
-        {label}
-      </button>
-    );
-  };
-
-  const Section = ({ title }: { title: string }) => (
-    <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1.6, color: "#9CA1AD", padding: "18px 14px 6px" }}>
-      {title}
-    </div>
-  );
-
   return (
     <aside
       className="desktop-sidebar"
@@ -87,40 +93,38 @@ export default function DesktopSidebar() {
     >
       <style>{`.msb-item:hover{ background:#F6F6F4 !important; }`}</style>
 
-     
-
       <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 8px" }}>
-        <Section title="BROWSE" />
-        <Item path="/"          icon={I.home}   label="Home" />
-        <Item path="/search"    icon={I.search} label="Search" />
-        <Item path="/discovery" icon={I.video}  label="Discover" />
-        <Item path="/stores"    icon={I.store}  label="Stores" />
+        <SidebarSection title="BROWSE" />
+        <SidebarItem path="/"          icon={I.home}   label="Home"     isActive={active("/")}          onNavigate={go} />
+        <SidebarItem path="/search"    icon={I.search} label="Search"   isActive={active("/search")}    onNavigate={go} />
+        <SidebarItem path="/discovery" icon={I.video}  label="Discover" isActive={active("/discovery")} onNavigate={go} />
+        <SidebarItem path="/stores"    icon={I.store}  label="Stores"   isActive={active("/stores")}    onNavigate={go} />
 
         {authUser && (
           <>
-            <Section title="MY ACCOUNT" />
-            <Item path="/orders"        icon={I.orders} label="My Orders" />
-            <Item path="/saved"         icon={I.heart}  label="Saved" />
-            <Item path="/notifications" icon={I.bell}   label="Notifications" />
-            <Item path="/profile"       icon={I.user}   label="Profile" />
+            <SidebarSection title="MY ACCOUNT" />
+            <SidebarItem path="/orders"        icon={I.orders} label="My Orders"     isActive={active("/orders")}        onNavigate={go} />
+            <SidebarItem path="/saved"         icon={I.heart}  label="Saved"         isActive={active("/saved")}         onNavigate={go} />
+            <SidebarItem path="/notifications" icon={I.bell}   label="Notifications" isActive={active("/notifications")} onNavigate={go} />
+            <SidebarItem path="/profile"       icon={I.user}   label="Profile"       isActive={active("/profile")}       onNavigate={go} />
           </>
         )}
 
         {isVendor && (
           <>
-            <Section title="VENDOR" />
-            <Item path="/dashboard"                icon={I.grid}  label="Dashboard" />
-            <Item path="/dashboard/create-product" icon={I.plus}  label="Add Product" />
-            <Item path="/dashboard/orders"         icon={I.orders} label="Store Orders" />
-            <Item path="/dashboard/analytics"      icon={I.chart} label="Analytics" />
-            <Item path="/dashboard/subscription"   icon={I.card}  label="Subscription" />
+            <SidebarSection title="VENDOR" />
+            <SidebarItem path="/dashboard"                icon={I.grid}   label="Dashboard"    isActive={active("/dashboard")}                onNavigate={go} />
+            <SidebarItem path="/dashboard/create-product" icon={I.plus}   label="Add Product"  isActive={active("/dashboard/create-product")} onNavigate={go} />
+            <SidebarItem path="/dashboard/orders"         icon={I.orders} label="Store Orders" isActive={active("/dashboard/orders")}         onNavigate={go} />
+            <SidebarItem path="/dashboard/analytics"      icon={I.chart}  label="Analytics"    isActive={active("/dashboard/analytics")}      onNavigate={go} />
+            <SidebarItem path="/dashboard/subscription"   icon={I.card}   label="Subscription" isActive={active("/dashboard/subscription")}   onNavigate={go} />
           </>
         )}
 
         {isAdmin && (
           <>
-            <Section title="ADMIN" />
-            <Item path="/admin" icon={I.grid} label="Admin Panel" />
+            <SidebarSection title="ADMIN" />
+            <SidebarItem path="/admin" icon={I.grid} label="Admin Panel" isActive={active("/admin")} onNavigate={go} />
           </>
         )}
       </div>
