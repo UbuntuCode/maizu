@@ -34,7 +34,7 @@ interface AnalyticsData {
     top_products:     { product_name: string; revenue: number; units_sold: number }[];
     revenue_by_store: { store_name: string; revenue: number; orders: number }[];
   };
-  stores: { id: string; name: string; product_count: number; follower_count: number; rating: number }[];
+  stores: { id: string; name: string; product_count: number; follower_count: number; rating: number; logo_url?: string }[];
 }
 
 /* â”€â”€ Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -80,12 +80,12 @@ const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
 );
 
 /* â”€â”€ Custom tooltip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-const ChartTooltip = ({ active, payload, label }: any) => {
+const ChartTooltip = ({ active, payload, label }: { active?: boolean; payload?: { dataKey?: string; name?: string; value?: number }[]; label?: string }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: C.dark, borderRadius: 10, padding: "8px 12px", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>{label}</div>
-      {payload.map((p: any) => (
+      {payload.map((p) => (
         <div key={p.dataKey} style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>
           {p.name === "revenue" ? `R${Number(p.value).toFixed(2)}` : `${p.value} orders`}
         </div>
@@ -129,8 +129,8 @@ export default function AnalyticsPage() {
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
         setData(json);
-      } catch (err: any) {
-        setError(err.message || "Failed to load analytics.");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load analytics.");
       } finally {
         setLoading(false);
       }
@@ -446,4 +446,5 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
 

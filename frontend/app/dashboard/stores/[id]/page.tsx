@@ -69,6 +69,15 @@ const STATUS_CFG: Record<string, { color: string; bg: string; icon: string; labe
   cancelled: { color: "#DC2626", bg: "#FEE2E2", icon: "âŒ", label: "Cancelled" },
 };
 
+interface BoostPlan {
+  name: string; price: number; duration: number; description: string;
+  features: string[]; color: string; emoji: string; popular?: boolean;
+}
+interface ActiveBoost {
+  plan: string; store_id: string; status: string; expires_at: string;
+  impressions?: number; clicks?: number;
+}
+
 const NEXT_STATUS: Record<string, Order["status"]> = {
   pending:   "confirmed",
   confirmed: "shipped",
@@ -220,9 +229,9 @@ export default function StoreManagePage() {
   const [filterStatus,  setFilterStatus]  = useState("all");
 
   /* Boost state */
-  const [boostPlans,    setBoostPlans]    = useState<Record<string, any>>({});
+  const [boostPlans,    setBoostPlans]    = useState<Record<string, BoostPlan>>({});
   const [selectedBoost, setSelectedBoost] = useState("growth");
-  const [activeBoost,   setActiveBoost]   = useState<any>(null);
+  const [activeBoost,   setActiveBoost]   = useState<ActiveBoost | null>(null);
   const [boostRef,      setBoostRef]      = useState("");
   const [boosting,      setBoosting]      = useState(false);
   const [boostSuccess,  setBoostSuccess]  = useState(false);
@@ -262,7 +271,7 @@ export default function StoreManagePage() {
       const myBoostsData = await myBoostsRes.json();
       if (plansData.success)    setBoostPlans(plansData.plans);
       if (myBoostsData.success) {
-        const current = myBoostsData.boosts.find((b: any) => b.store_id === storeId && b.status === "active" && new Date(b.expires_at) > new Date());
+        const current = myBoostsData.boosts.find((b: ActiveBoost) => b.store_id === storeId && b.status === "active" && new Date(b.expires_at) > new Date());
         setActiveBoost(current || null);
       }
     } catch { /* silent */ }
@@ -490,7 +499,7 @@ export default function StoreManagePage() {
               {activeBoost ? "Extend or upgrade your boost" : "Choose a boost plan"}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-              {Object.entries(boostPlans).map(([key, plan]: [string, any]) => (
+              {Object.entries(boostPlans).map(([key, plan]) => (
                 <BoostPlanCard key={key} planKey={key} plan={plan} selected={selectedBoost === key} onSelect={() => setSelectedBoost(key)} />
               ))}
             </div>
@@ -588,5 +597,6 @@ export default function StoreManagePage() {
     </div>
   );
 }
+
 
 

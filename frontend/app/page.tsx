@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
@@ -53,13 +53,13 @@ const CATEGORIES = [
   { label:"Services",    img:"https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=200&q=75", q:"services"    },
 ];
 
-/* ── Tiny components ──────────────────────────────────────── */
+/* â”€â”€ Tiny components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const SHead = ({ title, action, onAction }: { title:string; action?:string; onAction?:()=>void }) => (
   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
     <h2 style={{ fontSize:17, fontWeight:700, color:T.dark, margin:0 }}>{title}</h2>
     {action && (
       <button onClick={onAction} style={{ background:"none", border:"none", cursor:"pointer", fontSize:13, color:T.primary, fontWeight:600, padding:0 }}>
-        {action} →
+        {action} â†’
       </button>
     )}
   </div>
@@ -75,16 +75,25 @@ const ImgPlaceholder = () => (
   </div>
 );
 
-/* ══════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    HOME PAGE
-   — Renders immediately, no auth guard, no loading block
-══════════════════════════════════════════════════════════════ */
+   â€” Renders immediately, no auth guard, no loading block
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+interface HomeProduct {
+  id: string; name: string; price: number; image_urls?: string[];
+  store_id: string; store_name?: string; stock_quantity: number;
+}
+interface HomeStore {
+  id: string; name: string; category?: string; banner_url?: string;
+  logo_url?: string; rating?: number; product_count?: number;
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { addItem } = useCart();
 
-  const [products,  setProducts]  = useState<any[]>([]);
-  const [stores,    setStores]    = useState<any[]>([]);
+  const [products,  setProducts]  = useState<HomeProduct[]>([]);
+  const [stores,    setStores]    = useState<HomeStore[]>([]);
   const [bannerIdx, setBannerIdx] = useState(0);
   const [toast,     setToast]     = useState("");
 
@@ -107,7 +116,7 @@ export default function HomePage() {
     load();
   }, []);
 
-  const handleAdd = (p: any) => {
+  const handleAdd = (p: HomeProduct) => {
     addItem({ product_id:p.id, name:p.name, price:Number(p.price), image_url:p.image_urls?.[0], store_id:p.store_id, store_name:p.store_name||"Store", stock_quantity:p.stock_quantity });
     setToast(`${p.name} added to cart`);
     setTimeout(() => setToast(""), 2000);
@@ -173,7 +182,7 @@ export default function HomePage() {
           <div style={{ padding:"22px 14px 0" }}>
             <SHead title="Trending now" action="See all" onAction={() => router.push("/search")} />
             <div className="product-grid">
-              {products.slice(0, 8).map((p: any) => (
+              {products.slice(0, 8).map((p) => (
                 <div key={p.id} onClick={() => router.push(`/products/${p.id}`)} style={{ background:T.white, borderRadius:12, overflow:"hidden", border:`0.5px solid ${T.border}`, cursor:"pointer" }}>
                   <div style={{ aspectRatio:"1", background:"#F4F4F4", overflow:"hidden", position:"relative" }}>
                     {p.image_urls?.[0] ? <img src={p.image_urls[0]} alt={p.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} loading="lazy" /> : <ImgPlaceholder />}
@@ -204,7 +213,7 @@ export default function HomePage() {
         <div style={{ margin:"22px 14px 0", background:T.dark, borderRadius:16, padding:"20px 22px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:"#fff", marginBottom:4 }}>Start selling on Maizu</div>
-            <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>Free store · Accept card payments</div>
+            <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>Free store Â· Accept card payments</div>
           </div>
           <button onClick={() => router.push("/sell")} style={{ background:T.primary, color:"#fff", border:"none", borderRadius:9, padding:"10px 18px", fontSize:13, fontWeight:700, cursor:"pointer", flexShrink:0 }}>
             Open store
@@ -216,7 +225,7 @@ export default function HomePage() {
           <div style={{ padding:"22px 14px 0" }}>
             <SHead title="Featured stores" action="All stores" onAction={() => router.push("/stores")} />
             <div className="store-grid">
-              {stores.slice(0, 8).map((s: any) => (
+              {stores.slice(0, 8).map((s) => (
                 <div key={s.id} onClick={() => router.push(`/stores/${s.id}`)} style={{ background:T.white, borderRadius:12, overflow:"hidden", border:`0.5px solid ${T.border}`, cursor:"pointer" }}>
                   <div style={{ height:80, background:`linear-gradient(135deg,${T.primary}22,${T.primary}44)`, overflow:"hidden", position:"relative" }}>
                     {s.banner_url && <img src={s.banner_url} alt={s.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />}
@@ -231,7 +240,7 @@ export default function HomePage() {
                     <div style={{ fontSize:10, color:T.muted, marginTop:2 }}>{s.category}</div>
                     <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:5 }}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                      <span style={{ fontSize:10, color:T.muted }}>{Number(s.rating||0).toFixed(1)} · {s.product_count||0} items</span>
+                      <span style={{ fontSize:10, color:T.muted }}>{Number(s.rating||0).toFixed(1)} Â· {s.product_count||0} items</span>
                     </div>
                   </div>
                 </div>
@@ -263,3 +272,4 @@ export default function HomePage() {
     </div>
   );
 }
+

@@ -1,19 +1,19 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
 
 /*
-  Create Product — full redesign.
+  Create Product â€” full redesign.
   Two-column layout: form on the left, live product-card preview on the right.
   Uploads the photo to your Cloudinary account, then saves the product to Supabase.
 
-  IMPORTANT — one-time Cloudinary setup (2 minutes):
-  1. Go to cloudinary.com → Settings → Upload → Upload presets
+  IMPORTANT â€” one-time Cloudinary setup (2 minutes):
+  1. Go to cloudinary.com â†’ Settings â†’ Upload â†’ Upload presets
   2. Click "Add upload preset"
   3. Set Signing mode to "Unsigned", name it exactly:  maizu_unsigned
-  4. Save. That's it — uploads will work from the browser.
+  4. Save. That's it â€” uploads will work from the browser.
   (If you already have an unsigned preset, just change the name below.)
 */
 
@@ -33,9 +33,9 @@ const CATEGORIES = [
 
 export default function CreateProductPage() {
   const router = useRouter();
-  const { authUser } = useAuth() as any;
+  const { authUser } = useAuth();
 
-  const [stores, setStores]   = useState<any[]>([]);
+  const [stores, setStores]   = useState<{ id: string; name: string }[]>([]);
   const [storeId, setStoreId] = useState("");
   const [name, setName]       = useState("");
   const [desc, setDesc]       = useState("");
@@ -95,8 +95,8 @@ export default function CreateProductPage() {
       if (dbErr) throw new Error(dbErr.message);
       setDone(true);
       setTimeout(() => router.push("/dashboard"), 1600);
-    } catch (e: any) {
-      setError(e.message || "Something went wrong. Please try again.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -118,7 +118,7 @@ export default function CreateProductPage() {
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4L19 7" /></svg>
           </div>
           <div style={{ fontSize: 19, fontWeight: 800, color: T.ink, marginTop: 16 }}>Product published</div>
-          <div style={{ fontSize: 13.5, color: T.sub, marginTop: 6 }}>It is now live in your store. Taking you back to the dashboard…</div>
+          <div style={{ fontSize: 13.5, color: T.sub, marginTop: 6 }}>It is now live in your store. Taking you back to the dashboardâ€¦</div>
         </div>
       </div>
     );
@@ -142,7 +142,7 @@ export default function CreateProductPage() {
         </button>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: T.ink, margin: "10px 0 4px", letterSpacing: -0.4 }}>Create a product</h1>
         <p style={{ fontSize: 14, color: T.sub, margin: "0 0 22px" }}>
-          Add the details below — buyers across South Africa will see it in your store right away.
+          Add the details below â€” buyers across South Africa will see it in your store right away.
         </p>
 
         {stores.length === 0 ? (
@@ -157,7 +157,7 @@ export default function CreateProductPage() {
         ) : (
           <div className="mzc-grid">
 
-            {/* ── Form card ── */}
+            {/* â”€â”€ Form card â”€â”€ */}
             <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 18, padding: 22 }}>
 
               <label style={label}>Store</label>
@@ -172,7 +172,7 @@ export default function CreateProductPage() {
               <label style={label}>Description</label>
               <textarea className="mzc-input" style={{ ...input, marginBottom: 16, minHeight: 96, resize: "vertical", fontFamily: "inherit" }}
                 value={desc} onChange={(e) => setDesc(e.target.value)}
-                placeholder="Tell buyers what makes it special — size, materials, delivery time…" maxLength={600} />
+                placeholder="Tell buyers what makes it special â€” size, materials, delivery timeâ€¦" maxLength={600} />
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
                 <div>
@@ -204,7 +204,7 @@ export default function CreateProductPage() {
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>
                   {file ? file.name : "Tap to choose a photo"}
                 </div>
-                <div style={{ fontSize: 12, color: T.faint }}>Clear, bright photos sell up to 3× better</div>
+                <div style={{ fontSize: 12, color: T.faint }}>Clear, bright photos sell up to 3Ã— better</div>
               </label>
               <input id="mzc-file" type="file" accept="image/*" style={{ display: "none" }}
                 onChange={(e) => onPickFile(e.target.files?.[0] || null)} />
@@ -219,11 +219,11 @@ export default function CreateProductPage() {
                 marginTop: 18, width: "100%", background: busy ? "#F0A18E" : T.primary, color: "#fff",
                 border: "none", borderRadius: 12, padding: "14px 0", fontSize: 15, fontWeight: 800, cursor: busy ? "default" : "pointer",
               }}>
-                {busy ? "Publishing…" : "Publish product"}
+                {busy ? "Publishingâ€¦" : "Publish product"}
               </button>
             </div>
 
-            {/* ── Live preview ── */}
+            {/* â”€â”€ Live preview â”€â”€ */}
             <div style={{ position: "sticky", top: 20 }}>
               <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.6, color: T.faint, marginBottom: 10 }}>
                 LIVE PREVIEW
@@ -261,3 +261,4 @@ export default function CreateProductPage() {
     </div>
   );
 }
+
