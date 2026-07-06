@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -19,17 +19,16 @@ function PayFastSuccessContent() {
 
   const orderId = searchParams.get("order_id");
 
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(Boolean(orderId));
   const [confirmed, setConfirmed] = useState(false);
   const [order,     setOrder]    = useState<any>(null);
   const [attempts,  setAttempts] = useState(0);
 
   useEffect(() => {
-    if (!authLoading && !isLoggedIn) { router.push("/login"); return; }
-    if (!orderId) { setChecking(false); return; }
-  }, [authLoading, isLoggedIn, orderId, router]);
+    if (!authLoading && !isLoggedIn) router.push("/login");
+  }, [authLoading, isLoggedIn, router]);
 
-  /* Poll order status — PayFast ITN can take a few seconds to arrive */
+  /* Poll order status â€” PayFast ITN can take a few seconds to arrive */
   useEffect(() => {
     if (!isLoggedIn || !orderId) return;
 
@@ -70,7 +69,7 @@ function PayFastSuccessContent() {
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#FFF3EF", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ width: 32, height: 32, borderRadius: "50%", border: `3px solid ${P}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />
         </div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: DARK }}>Confirming your payment…</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: DARK }}>Confirming your paymentâ€¦</div>
         <div style={{ fontSize: 13, color: MUTED, textAlign: "center" }}>This takes just a moment. Please do not close this page.</div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         <BottomNav />
@@ -83,7 +82,7 @@ function PayFastSuccessContent() {
     return (
       <div style={{ background: BG, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: 16, paddingBottom: 90 }}>
         <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>
-          ⏳
+          â³
         </div>
         <div style={{ fontSize: 18, fontWeight: 800, color: DARK }}>Payment processing</div>
         <div style={{ fontSize: 13, color: MUTED, textAlign: "center", maxWidth: 280, lineHeight: 1.6 }}>
@@ -112,7 +111,7 @@ function PayFastSuccessContent() {
       {/* Green header */}
       <div style={{ background: "linear-gradient(135deg,#059669,#34D399)", padding: "36px 20px 28px", textAlign: "center" }}>
         <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, margin: "0 auto 14px" }}>
-          🎉
+          ðŸŽ‰
         </div>
         <div style={{ fontSize: 22, fontWeight: 900, color: WHITE, marginBottom: 4 }}>Payment Successful!</div>
         <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>Your order is confirmed and being prepared</div>
@@ -179,10 +178,11 @@ export default function PayFastSuccessPage() {
   return (
     <Suspense fallback={
       <div style={{ minHeight: "100vh", background: "#F7F7F5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 13, color: "#71717A" }}>Loading…</div>
+        <div style={{ fontSize: 13, color: "#71717A" }}>Loadingâ€¦</div>
       </div>
     }>
       <PayFastSuccessContent />
     </Suspense>
   );
 }
+

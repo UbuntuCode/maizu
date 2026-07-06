@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
-/* ── Types ──────────────────────────────────────────────────── */
+/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export interface CartItem {
   product_id:   string;
   name:         string;
@@ -29,7 +29,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 const STORAGE_KEY = "maizu_cart";
 
-/* ── Provider ───────────────────────────────────────────────── */
+/* â”€â”€ Provider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -38,6 +38,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe localStorage hydration; a lazy initializer would cause a server/client hydration mismatch. Proper fix is useSyncExternalStore (future refactor).
       if (stored) setItems(JSON.parse(stored));
     } catch { /* ignore */ }
     setHydrated(true);
@@ -51,7 +52,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch { /* ignore */ }
   }, [items, hydrated]);
 
-  /* Add item — if already in cart, increment quantity */
+  /* Add item â€” if already in cart, increment quantity */
   const addItem = useCallback((newItem: Omit<CartItem, "quantity">) => {
     setItems(prev => {
       const exists = prev.find(i => i.product_id === newItem.product_id);
@@ -71,7 +72,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems(prev => prev.filter(i => i.product_id !== product_id));
   }, []);
 
-  /* Update quantity — remove if 0 */
+  /* Update quantity â€” remove if 0 */
   const updateQty = useCallback((product_id: string, quantity: number) => {
     if (quantity <= 0) {
       setItems(prev => prev.filter(i => i.product_id !== product_id));
@@ -112,9 +113,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── Hook ───────────────────────────────────────────────────── */
+/* â”€â”€ Hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export function useCart(): CartContextValue {
   const ctx = useContext(CartContext);
   if (!ctx) throw new Error("useCart must be used inside <CartProvider>");
   return ctx;
 }
+
