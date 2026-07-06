@@ -28,6 +28,18 @@ const SORT_OPTIONS = [
   { value:"popular",    label:"Most popular"     },
 ];
 
+interface SearchProduct {
+  id:             string;
+  name:           string;
+  price:          number;
+  image_urls?:    string[];
+  store_id:       string;
+  store_name?:    string;
+  stock_quantity: number;
+  like_count:     number;
+  view_count:     number;
+}
+
 function SearchContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -36,7 +48,7 @@ function SearchContent() {
 
   const [query,       setQuery]       = useState(searchParams.get("q") || "");
   const [inputVal,    setInputVal]    = useState(searchParams.get("q") || "");
-  const [products,    setProducts]    = useState<any[]>([]);
+  const [products,    setProducts]    = useState<SearchProduct[]>([]);
   const [loading,     setLoading]     = useState(false);
   const [searched,    setSearched]    = useState(false);
   const [sortBy,      setSortBy]      = useState("newest");
@@ -51,9 +63,9 @@ function SearchContent() {
     try {
       const res  = await fetch(`${BASE}/api/products?search=${encodeURIComponent(q)}&limit=40`);
       const data = await res.json();
-      let results = data.products || [];
-      if (inStockOnly) results = results.filter((p: any) => p.stock_quantity > 0);
-      results = [...results].sort((a: any, b: any) => {
+      let results: SearchProduct[] = (data.products || []) as SearchProduct[];
+      if (inStockOnly) results = results.filter((p: SearchProduct) => p.stock_quantity > 0);
+      results = [...results].sort((a: SearchProduct, b: SearchProduct) => {
         if (sortBy === "price_asc")  return Number(a.price) - Number(b.price);
         if (sortBy === "price_desc") return Number(b.price) - Number(a.price);
         if (sortBy === "popular")    return (b.like_count + b.view_count) - (a.like_count + a.view_count);
@@ -70,7 +82,7 @@ function SearchContent() {
     return () => clearTimeout(t);
   }, [query, doSearch]);
 
-  const handleAdd = (p: any) => {
+  const handleAdd = (p: SearchProduct) => {
     addItem({ product_id:p.id, name:p.name, price:Number(p.price), image_url:p.image_urls?.[0], store_id:p.store_id, store_name:p.store_name||"Store", stock_quantity:p.stock_quantity });
     setToast(`${p.name} added`);
     setTimeout(() => setToast(""), 2000);
@@ -182,7 +194,7 @@ function SearchContent() {
               </div>
             ) : (
               <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
-                {products.map((p: any) => (
+                {products.map((p) => (
                   <div key={p.id} style={{ background:WHITE, borderRadius:12, overflow:"hidden", border:`0.5px solid ${BORDER}` }}>
                     <div style={{ height:150, background:"#F4F4F4", overflow:"hidden", position:"relative" }}>
                       {p.image_urls?.[0]
@@ -228,4 +240,6 @@ export default function SearchPage() {
     </Suspense>
   );
 }
+
+
 

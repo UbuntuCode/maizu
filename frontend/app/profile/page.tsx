@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
+import type { Store, Order } from "@/utils/api";
 import BottomNav from "@/components/navigation/BottomNav";
 import Header from "@/components/layout/Header";
 
@@ -16,7 +17,13 @@ const BORDER = "#E4E4E7";
 
 type ActiveTab = "following" | "liked" | "subscriptions" | "activity";
 
-/* ── Stat card ──────────────────────────────────────────────── */
+interface UserProfileLike {
+  full_name?: string;
+  role?:      string;
+  plan?:      string;
+}
+
+/* â”€â”€ Stat card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function StatCard({ label, value, onClick }: { label: string; value: string | number; onClick?: () => void }) {
   return (
     <button
@@ -34,7 +41,7 @@ function StatCard({ label, value, onClick }: { label: string; value: string | nu
   );
 }
 
-/* ── Tab button ─────────────────────────────────────────────── */
+/* â”€â”€ Tab button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function TabBtn({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
@@ -53,17 +60,17 @@ function TabBtn({ active, label, onClick }: { active: boolean; label: string; on
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    PROFILE PAGE
-══════════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function ProfilePage() {
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const { authUser, profile, isLoggedIn, loading: authLoading } = useAuth();
 
   const [activeTab,   setActiveTab]   = useState<ActiveTab>("following");
-  const [stores,      setStores]      = useState<any[]>([]);
-  const [orders,      setOrders]      = useState<any[]>([]);
+  const [stores,      setStores]      = useState<Store[]>([]);
+  const [orders,      setOrders]      = useState<Order[]>([]);
   const [avatarUrl,   setAvatarUrl]   = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
 
@@ -87,7 +94,7 @@ export default function ProfilePage() {
         const orderData = await or.json();
         if (storeData.success) setStores(storeData.stores || []);
         if (orderData.success) setOrders(orderData.orders || []);
-        setAvatarUrl((authUser as any).user_metadata?.avatar_url || null);
+        setAvatarUrl((authUser?.user_metadata?.avatar_url as string | undefined) || null);
       } catch { /* silent */ }
       finally { setPageLoading(false); }
     };
@@ -116,17 +123,17 @@ export default function ProfilePage() {
   };
 
   /* Derived values */
-  const p            = profile as any;
-  const displayName  = p?.full_name || (authUser as any)?.user_metadata?.full_name || authUser?.email?.split("@")[0] || "User";
+  const p            = profile as (UserProfileLike | null);
+  const displayName  = p?.full_name || (authUser?.user_metadata?.full_name as string | undefined) || authUser?.email?.split("@")[0] || "User";
   const initials     = displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
   const userRole     = p?.role || "buyer";
   const isVendor     = userRole === "vendor" || userRole === "admin";
   const currentPlan  = p?.plan || "free";
 
   const planLabel: Record<string, string> = {
-    free:  "1 store · 10 products · 5% commission",
-    basic: "3 stores · 50 products · 3% commission",
-    pro:   "Unlimited stores · 1% commission",
+    free:  "1 store Â· 10 products Â· 5% commission",
+    basic: "3 stores Â· 50 products Â· 3% commission",
+    pro:   "Unlimited stores Â· 1% commission",
   };
 
   /* Loading spinner */
@@ -143,7 +150,7 @@ export default function ProfilePage() {
     <div style={{ background: BG, minHeight: "100vh", paddingBottom: 80 }}>
       <Header />
 
-      {/* ── Profile header ── */}
+      {/* â”€â”€ Profile header â”€â”€ */}
       <div style={{ background: WHITE, borderBottom: `0.5px solid ${BORDER}`, padding: "24px 16px 20px" }}>
 
         <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
@@ -172,7 +179,7 @@ export default function ProfilePage() {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 19, fontWeight: 800, color: DARK, marginBottom: 3 }}>{displayName}</div>
             <div style={{ fontSize: 12, color: MUTED, marginBottom: 6, textTransform: "capitalize" }}>
-              {userRole === "vendor" ? "Vendor · Maizu Business Hub" : userRole === "admin" ? "Admin" : "Shopper"}
+              {userRole === "vendor" ? "Vendor Â· Maizu Business Hub" : userRole === "admin" ? "Admin" : "Shopper"}
             </div>
             {authUser?.email && (
               <div style={{ fontSize: 11, color: MUTED, display: "flex", alignItems: "center", gap: 4 }}>
@@ -211,7 +218,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ── Quick actions ── */}
+      {/* â”€â”€ Quick actions â”€â”€ */}
       <div style={{ padding: "14px 16px", display: "flex", gap: 8 }}>
         {isVendor ? (
           <button
@@ -242,7 +249,7 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {/* ── Tabs ── */}
+      {/* â”€â”€ Tabs â”€â”€ */}
       <div style={{ background: WHITE, borderBottom: `0.5px solid ${BORDER}`, display: "flex", overflowX: "auto", marginTop: 6 }}>
         <TabBtn active={activeTab === "following"}     label="Following"       onClick={() => setActiveTab("following")}     />
         <TabBtn active={activeTab === "liked"}         label="Liked stores"    onClick={() => setActiveTab("liked")}         />
@@ -250,7 +257,7 @@ export default function ProfilePage() {
         <TabBtn active={activeTab === "activity"}      label="Recent activity" onClick={() => setActiveTab("activity")}      />
       </div>
 
-      {/* ── Tab content ── */}
+      {/* â”€â”€ Tab content â”€â”€ */}
       <div style={{ padding: "20px 16px" }}>
 
         {(activeTab === "following" || activeTab === "liked") && (
@@ -303,7 +310,7 @@ export default function ProfilePage() {
                 <div style={{ fontSize: 13, color: MUTED }}>Your orders will appear here.</div>
               </div>
             ) : (
-              orders.slice(0, 5).map((o: any) => (
+              orders.slice(0, 5).map((o) => (
                 <div
                   key={o.id}
                   onClick={() => router.push(`/orders/${o.id}`)}
@@ -325,7 +332,7 @@ export default function ProfilePage() {
 
       </div>
 
-      {/* ── Footer links ── */}
+      {/* â”€â”€ Footer links â”€â”€ */}
       <div style={{ padding: "0 16px 20px" }}>
         <div style={{ background: WHITE, borderRadius: 14, overflow: "hidden", border: `0.5px solid ${BORDER}` }}>
           {[
@@ -352,3 +359,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
