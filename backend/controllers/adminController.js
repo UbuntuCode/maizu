@@ -1,3 +1,7 @@
+const { sendNotification } = require("./notificationController");
+const { BOOST_PLANS }      = require("./featuredController");
+
+
 const { query } = require("../config/db");
 
 /* ══════════════════════════════════════════════════════════════
@@ -235,9 +239,147 @@ const adminUpdateOrderStatus = async (req, res) => {
   res.status(200).json({ success: true, order: result.rows[0] });
 };
 
+/* ══════════════════════════════════════════════════════════════
+   BOOST PAYMENT VERIFICATION
+   Boosts are created as 'pending' by featuredController.boostStore.
+   Nothing activates until an admin confirms the EFT arrived.
+══════════════════════════════════════════════════════════════ */
+
+/* ── LIST BOOSTS ── GET /api/admin/boosts?status=pending ────── */
+const getBoosts = async (req, res) => {
+  const { status = "pending" } = req.query;
+  const valid = ["pending", "active", "rejected", "expired", "cancelled", "all"];
+  if (!valid.includes(status)) {
+    return res.status(400).json({ success: false, message: "Invalid status filter." });
+  }
+
+  const where  = status === "all" ? "" : "WHERE f.status = $1";
+  const params = status === "all" ? [] : [status];
+
+  const result = await query(
+    `SELECT f.*, s.name AS store_name, s.logo_url,
+            u.full_name AS vendor_name, u.email AS vendor_email
+     FROM featured_stores f
+     JOIN stores s ON f.store_id = s.id
+     JOIN users  u ON f.vendor_id = u.id
+     ${where}
+     ORDER BY f.created_at DESC
+     LIMIT 100`,
+    params
+  );
+  res.status(200).json({ success: true, boosts: result.rows });
+};
+
+/* ── APPROVE BOOST ── PUT /api/admin/boosts/:id/approve ───────
+   ONLY call after the money is confirmed in the bank account.   */
+const approveBoost = async (req, res) => {
+  const boostResult = await query(
+    "SELECT * FROM featured_stores WHERE id = $1 AND status = 'pending'",
+    [req.params.id]
+  );
+  if (boostResult.rows.length === 0) {
+    return res.status(404).json({ success: false, message: "Pending boost not found (already handled?)." });
+  }
+  const boost    = boostResult.rows[0];
+  const planInfo = BOOST_PLANS[boost.plan];
+  if (!planInfo) {
+    return res.status(400).json({ success: false, message: `Unknown plan '${boost.plan}' on this boost.` });
+  }
+
+  /* Real expiry counts from approval — but if the store already has an
+     active boost, the new one starts when that one ends (no lost days). */
+  const activeResult = await query(
+    `SELECT MAX(expires_at) AS current_expiry FROM featured_stores
+     WHERE store_id = $1 AND status = 'active' AND expires_at > NOW()`,
+    [boost.store_id]
+  );
+  const base      = activeResult.rows[0].current_expiry
+                    ? new Date(activeResult.rows[0].current_expiry)
+                    : new Date();
+  const expiresAt = new Date(base);
+  expiresAt.setDate(expiresAt.getDate() + planInfo.duration);
+
+  const updated = await query(
+    `UPDATE featured_stores
+     SET status = 'active', approved_by = $1, approved_at = NOW(), expires_at = $2
+     WHERE id = $3 AND status = 'pending'
+     RETURNING *`,
+    [req.user.id, expiresAt, req.params.id]
+  );
+  if (updated.rows.length === 0) {
+    return res.status(409).json({ success: false, message: "Boost was already handled by someone else." });
+  }
+
+  await query("UPDATE stores SET is_trending = true WHERE id = $1", [boost.store_id]);
+
+  const storeName = (await query("SELECT name FROM stores WHERE id = $1", [boost.store_id])).rows[0]?.name || "Your store";
+
+  await sendNotification(
+    boost.vendor_id,
+    "boost_approved",
+    "Boost activated! 🚀",
+    `Payment verified — ${storeName} is now featured until ${expiresAt.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })}.`,
+    { boost_id: boost.id, store_id: boost.store_id }
+  );
+
+  /* Invoice email — activates automatically once utils/email.js (Task C1)
+     exists. Safe no-op until then. */
+  try {
+    const email = require("../utils/email");
+    if (email && email.sendEmail && email.boostInvoiceEmail) {
+      const vendor = (await query("SELECT full_name, email FROM users WHERE id = $1", [boost.vendor_id])).rows[0];
+      if (vendor) {
+        const { subject, html } = email.boostInvoiceEmail({
+          vendorName:    vendor.full_name,
+          storeName,
+          planName:      planInfo.name,
+          amount:        boost.amount_paid,
+          receiptNumber: "MZU-BOOST-" + boost.id.slice(0, 8).toUpperCase(), // TODO: sequential numbers when C1's getNextReceiptNumber lands
+          paymentMethod: boost.payment_method || "EFT",
+          date:          new Date().toLocaleDateString("en-ZA"),
+        });
+        await email.sendEmail({ to: vendor.email, subject, html });
+      }
+    }
+  } catch { /* email module not built yet — expected until Task C1 merges */ }
+
+  res.status(200).json({ success: true, boost: updated.rows[0] });
+};
+
+/* ── REJECT BOOST ── PUT /api/admin/boosts/:id/reject ───────── */
+const rejectBoost = async (req, res) => {
+  const { reason } = req.body;
+  if (!reason || String(reason).trim().length < 3) {
+    return res.status(400).json({ success: false, message: "A rejection reason is required — the vendor will see it." });
+  }
+
+  const updated = await query(
+    `UPDATE featured_stores
+     SET status = 'rejected', rejected_reason = $1, approved_by = $2, approved_at = NOW()
+     WHERE id = $3 AND status = 'pending'
+     RETURNING *`,
+    [String(reason).trim(), req.user.id, req.params.id]
+  );
+  if (updated.rows.length === 0) {
+    return res.status(404).json({ success: false, message: "Pending boost not found (already handled?)." });
+  }
+  const boost = updated.rows[0];
+
+  await sendNotification(
+    boost.vendor_id,
+    "boost_rejected",
+    "Boost payment issue ⚠️",
+    `We couldn't verify your boost payment: ${String(reason).trim()}. Reply to support or resubmit with the correct reference.`,
+    { boost_id: boost.id, store_id: boost.store_id }
+  );
+
+  res.status(200).json({ success: true, boost });
+};
+
 module.exports = {
   getDashboardStats,
   getUsers, updateUserRole, deleteUser,
   getStores, toggleStoreActive, toggleStoreTrending, adminDeleteStore,
   getAllOrders, adminUpdateOrderStatus,
+  getBoosts, approveBoost, rejectBoost,
 };
