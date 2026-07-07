@@ -10,6 +10,7 @@ export default function AdminNav({ active }: { active: string }) {
     { path: "/admin/users",  icon: "👥", label: "Users"    },
     { path: "/admin/stores", icon: "🏪", label: "Stores"   },
     { path: "/admin/orders", icon: "📦", label: "Orders"   },
+    { path: "/admin/boosts", icon: "🚀", label: "Boosts"   },
   ];
   return (
     <div style={{ background: C.dark, display: "flex", overflowX: "auto" }}>

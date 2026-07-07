@@ -536,14 +536,14 @@ export default function StoreManagePage() {
                 {boostError && <div style={{ background: "#FEE2E2", borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 12, color: "#991B1B" }}>{boostError}</div>}
 
                 {boostSuccess && (
-                  <div style={{ background: "#D1FAE5", borderRadius: 12, padding: "12px 14px", marginBottom: 12, fontSize: 13, color: "#065F46", fontWeight: 600, textAlign: "center" }}>
-                    ðŸŽ‰ Boost activated! Your store is now featured.
-                  </div>
-                )}
+  <div style={{ background: "#FEF3C7", borderRadius: 12, padding: "12px 14px", marginBottom: 12, fontSize: 13, color: "#92400E", fontWeight: 600, textAlign: "center" }}>
+    ⏳ Boost submitted! It activates once we verify your payment — usually within a few hours.
+  </div>
+)}
 
                 <button onClick={handleBoost} disabled={boosting}
                   style={{ width: "100%", background: boosting ? C.grayLight : "#FF6B35", color: "#fff", border: "none", borderRadius: 14, padding: "13px 0", fontSize: 14, fontWeight: 700, cursor: boosting ? "default" : "pointer", marginBottom: 10 }}>
-                  {boosting ? "Activatingâ€¦" : `ðŸš€ Boost Store â€” R${boostPlans[selectedBoost]?.price || "â€”"}`}
+                 {boosting ? "Submitting…" : `🚀 Boost Store — R${boostPlans[selectedBoost]?.price || "—"}`}
                 </button>
 
                 <button
