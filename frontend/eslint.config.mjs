@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Project rule overrides
+  {
+    rules: {
+      // Images are served via Cloudinary; next/image optimization is
+      // metered on Vercel — intentionally using <img>.
+      "@next/next/no-img-element": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
