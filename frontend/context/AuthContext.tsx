@@ -9,7 +9,9 @@ interface UserProfile {
   email:       string;
   role:        string;
   avatar_url?: string;
-  [key: string]: unknown;
+  /* Extra users-table columns (plan, etc.) without typing each one */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
 }
 
 interface AuthContextType {
@@ -27,7 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   session:        null,
   profile:        null,
   isLoggedIn:     false,
-  loading:        false, /* default false â€” don't block anything */
+  loading:        false, /* default false — don't block anything */
   refreshProfile: async () => {},
   signOut:        async () => {},
 });
@@ -61,15 +63,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    /* Hard timeout â€” never block UI more than 2.5 seconds */
-    const timeout = setTimeout(() => setLoading(false), 2500);
+    /* Hard timeout — never block UI more than 5 seconds */
+    const timeout = setTimeout(() => setLoading(false), 5000);
 
     supabase.auth.getSession()
-      .then(({ data: { session: s } }) => {
-        clearTimeout(timeout);
+      .then(async ({ data: { session: s } }) => {
         setSession(s);
         setAuthUser(s?.user ?? null);
-        if (s?.user) fetchProfile(s.user.id);
+        /* Wait for the profile BEFORE declaring auth loaded —
+           otherwise role-guarded pages redirect on a null profile */
+        if (s?.user) await fetchProfile(s.user.id);
+        clearTimeout(timeout);
         setLoading(false);
       })
       .catch(() => {
@@ -80,9 +84,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setAuthUser(s?.user ?? null);
-      if (s?.user) fetchProfile(s.user.id);
-      else setProfile(null);
-      setLoading(false);
+      if (s?.user) {
+        /* setTimeout defers the Supabase call out of the auth callback
+           (awaiting directly inside onAuthStateChange can deadlock) */
+        const uid = s.user.id;
+        setTimeout(async () => {
+          await fetchProfile(uid);
+          setLoading(false);
+        }, 0);
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
     });
 
     return () => {
@@ -99,5 +112,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
-
-
