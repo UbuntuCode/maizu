@@ -53,13 +53,13 @@ const CATEGORIES = [
   { label:"Services",    img:"https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=200&q=75", q:"services"    },
 ];
 
-/* â”€â”€ Tiny components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Tiny components ─────────────────────────────────────────── */
 const SHead = ({ title, action, onAction }: { title:string; action?:string; onAction?:()=>void }) => (
   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
     <h2 style={{ fontSize:17, fontWeight:700, color:T.dark, margin:0 }}>{title}</h2>
     {action && (
       <button onClick={onAction} style={{ background:"none", border:"none", cursor:"pointer", fontSize:13, color:T.primary, fontWeight:600, padding:0 }}>
-        {action} â†’
+        {action} →
       </button>
     )}
   </div>
@@ -75,10 +75,10 @@ const ImgPlaceholder = () => (
   </div>
 );
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ══════════════════════════════════════════════════════════════
    HOME PAGE
-   â€” Renders immediately, no auth guard, no loading block
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   — Renders immediately, no auth guard, no loading block
+══════════════════════════════════════════════════════════════ */
 interface HomeProduct {
   id: string; name: string; price: number; image_urls?: string[];
   store_id: string; store_name?: string; stock_quantity: number;
@@ -87,6 +87,12 @@ interface HomeStore {
   id: string; name: string; category?: string; banner_url?: string;
   logo_url?: string; rating?: number; product_count?: number;
 }
+interface BoostedStore {
+  /* From /api/featured/active: id = featured row (for click tracking),
+     store_id = the actual store (for navigation). Never swap them. */
+  id: string; store_id: string; name: string; category?: string;
+  banner_url?: string; logo_url?: string; rating?: number;
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -94,6 +100,7 @@ export default function HomePage() {
 
   const [products,  setProducts]  = useState<HomeProduct[]>([]);
   const [stores,    setStores]    = useState<HomeStore[]>([]);
+  const [boosted,   setBoosted]   = useState<BoostedStore[]>([]);
   const [bannerIdx, setBannerIdx] = useState(0);
   const [toast,     setToast]     = useState("");
 
@@ -105,12 +112,14 @@ export default function HomePage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [pr, sr] = await Promise.all([
+        const [pr, sr, fr] = await Promise.all([
           fetch(`${BASE}/api/products?limit=20`),
           fetch(`${BASE}/api/vendors?limit=10`),
+          fetch(`${BASE}/api/featured/active?limit=10`),
         ]);
         if (pr.ok) { const d = await pr.json(); if (d.success) setProducts(d.products || []); }
         if (sr.ok) { const d = await sr.json(); if (d.success) setStores(d.stores || []); }
+        if (fr.ok) { const d = await fr.json(); if (d.success) setBoosted(d.stores || []); }
       } catch { /* never crash the home page */ }
     };
     load();
@@ -120,6 +129,12 @@ export default function HomePage() {
     addItem({ product_id:p.id, name:p.name, price:Number(p.price), image_url:p.image_urls?.[0], store_id:p.store_id, store_name:p.store_name||"Store", stock_quantity:p.stock_quantity });
     setToast(`${p.name} added to cart`);
     setTimeout(() => setToast(""), 2000);
+  };
+
+  const openBoostedStore = (b: BoostedStore) => {
+    /* Count the click (fire-and-forget), then navigate */
+    fetch(`${BASE}/api/featured/${b.id}/click`, { method:"POST" }).catch(() => {});
+    router.push(`/stores/${b.store_id}`);
   };
 
   const banner = AD_BANNERS[bannerIdx];
@@ -160,6 +175,31 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* SPONSORED / BOOSTED STORES — only renders when boosts are active */}
+        {boosted.length > 0 && (
+          <div style={{ padding:"20px 14px 0" }}>
+            <SHead title="Featured stores 🔥" />
+            <div style={{ display:"flex", gap:10, overflowX:"auto", paddingBottom:4, WebkitOverflowScrolling:"touch" }}>
+              {boosted.map(b => (
+                <div key={b.id} onClick={() => openBoostedStore(b)}
+                  style={{ flex:"none", width:150, background:T.white, borderRadius:12, border:`0.5px solid ${T.border}`, overflow:"hidden", cursor:"pointer" }}>
+                  <div style={{ height:60, background:`linear-gradient(135deg,${T.primary}22,${T.primary}44)`, overflow:"hidden", position:"relative" }}>
+                    {b.banner_url && <img src={b.banner_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} loading="lazy" />}
+                    <span style={{ position:"absolute", top:6, right:6, background:"rgba(0,0,0,0.55)", color:"#fff", borderRadius:8, padding:"2px 7px", fontSize:8, fontWeight:700, letterSpacing:0.5 }}>SPONSORED</span>
+                  </div>
+                  <div style={{ padding:"20px 10px 12px", position:"relative" }}>
+                    <div style={{ position:"absolute", top:-14, left:10, width:28, height:28, borderRadius:7, background:b.logo_url?"transparent":T.soft, border:`2px solid ${T.white}`, overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12 }}>
+                      {b.logo_url ? <img src={b.logo_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : "🏪"}
+                    </div>
+                    <div style={{ fontSize:12, fontWeight:700, color:T.dark, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.name}</div>
+                    <div style={{ fontSize:10, color:T.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.category || "Store"}{b.rating ? ` · ⭐ ${Number(b.rating).toFixed(1)}` : ""}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* CATEGORIES */}
         <div style={{ padding:"20px 14px 0" }}>
@@ -213,7 +253,7 @@ export default function HomePage() {
         <div style={{ margin:"22px 14px 0", background:T.dark, borderRadius:16, padding:"20px 22px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:"#fff", marginBottom:4 }}>Start selling on Maizu</div>
-            <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>Free store Â· Accept card payments</div>
+            <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>Free store · Accept card payments</div>
           </div>
           <button onClick={() => router.push("/sell")} style={{ background:T.primary, color:"#fff", border:"none", borderRadius:9, padding:"10px 18px", fontSize:13, fontWeight:700, cursor:"pointer", flexShrink:0 }}>
             Open store
@@ -223,7 +263,7 @@ export default function HomePage() {
         {/* STORES */}
         {stores.length > 0 && (
           <div style={{ padding:"22px 14px 0" }}>
-            <SHead title="Featured stores" action="All stores" onAction={() => router.push("/stores")} />
+            <SHead title="Discover stores" action="All stores" onAction={() => router.push("/stores")} />
             <div className="store-grid">
               {stores.slice(0, 8).map((s) => (
                 <div key={s.id} onClick={() => router.push(`/stores/${s.id}`)} style={{ background:T.white, borderRadius:12, overflow:"hidden", border:`0.5px solid ${T.border}`, cursor:"pointer" }}>
@@ -240,7 +280,7 @@ export default function HomePage() {
                     <div style={{ fontSize:10, color:T.muted, marginTop:2 }}>{s.category}</div>
                     <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:5 }}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                      <span style={{ fontSize:10, color:T.muted }}>{Number(s.rating||0).toFixed(1)} Â· {s.product_count||0} items</span>
+                      <span style={{ fontSize:10, color:T.muted }}>{Number(s.rating||0).toFixed(1)} · {s.product_count||0} items</span>
                     </div>
                   </div>
                 </div>
@@ -272,4 +312,3 @@ export default function HomePage() {
     </div>
   );
 }
-

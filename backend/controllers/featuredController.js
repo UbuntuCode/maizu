@@ -1,6 +1,6 @@
 const { query } = require("../config/db");
 
-/* ── BOOST PLANS ────────────────────────────────────────────── */
+/* ── BOOST PLANS ──────────────────────────────────────────────── */
 const BOOST_PLANS = {
   starter: {
     name:        "Starter Boost",
@@ -53,7 +53,7 @@ const getMyBoosts = async (req, res) => {
   res.status(200).json({ success: true, boosts: result.rows });
 };
 
-/* ── GET ACTIVE FEATURED STORES ── GET /api/featured/active ─── */
+/* ── GET ACTIVE FEATURED STORES ── GET /api/featured/active ── */
 const getActiveFeatured = async (req, res) => {
   const { limit = 10 } = req.query;
   const result = await query(
@@ -83,7 +83,10 @@ const getActiveFeatured = async (req, res) => {
   res.status(200).json({ success: true, stores: result.rows });
 };
 
-/* ── BOOST STORE ── POST /api/featured/boost ────────────────── */
+/* ── BOOST STORE ── POST /api/featured/boost ──────────────────
+   SECURITY: creates a PENDING boost only. Nothing activates and
+   is_trending is never touched until an admin verifies the money
+   arrived (see adminController approve/reject).                  */
 const boostStore = async (req, res) => {
   const { store_id, plan, payment_ref } = req.body;
   const vendor_id = req.user.id;
@@ -91,9 +94,15 @@ const boostStore = async (req, res) => {
   if (!store_id || !plan) {
     return res.status(400).json({ success: false, message: "store_id and plan are required." });
   }
-
   if (!BOOST_PLANS[plan]) {
     return res.status(400).json({ success: false, message: "Invalid boost plan." });
+  }
+  /* Payment reference is now REQUIRED — it's what we verify against the bank */
+  if (!payment_ref || String(payment_ref).trim().length < 4) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide your EFT payment reference so we can verify your payment.",
+    });
   }
 
   /* Check store belongs to vendor */
@@ -105,48 +114,41 @@ const boostStore = async (req, res) => {
     return res.status(403).json({ success: false, message: "Store not found or not yours." });
   }
 
-  const planInfo   = BOOST_PLANS[plan];
-  const expiresAt  = new Date();
-  expiresAt.setDate(expiresAt.getDate() + planInfo.duration);
-
-  /* Check if store already has an active boost */
-  const existing = await query(
-    `SELECT id FROM featured_stores
-     WHERE store_id = $1 AND status = 'active' AND expires_at > NOW()`,
+  /* One pending request per store at a time — prevents queue spam */
+  const pendingCheck = await query(
+    `SELECT id FROM featured_stores WHERE store_id = $1 AND status = 'pending'`,
     [store_id]
   );
-
-  if (existing.rows.length > 0) {
-    /* Extend existing boost */
-    await query(
-      `UPDATE featured_stores
-       SET expires_at = expires_at + INTERVAL '${planInfo.duration} days',
-           plan = $1, amount_paid = amount_paid + $2, payment_ref = $3
-       WHERE store_id = $4 AND status = 'active'`,
-      [plan, planInfo.price, payment_ref || null, store_id]
-    );
-  } else {
-    /* Create new boost */
-    await query(
-      `INSERT INTO featured_stores
-         (store_id, vendor_id, plan, status, amount_paid, payment_ref, expires_at, position)
-       VALUES ($1, $2, $3, 'active', $4, $5, $6, $7)`,
-      [store_id, vendor_id, plan, planInfo.price, payment_ref || null, expiresAt, planInfo.position]
-    );
+  if (pendingCheck.rows.length > 0) {
+    return res.status(409).json({
+      success: false,
+      message: "You already have a boost awaiting verification for this store. We'll review it shortly.",
+    });
   }
 
-  /* Mark store as trending */
-  await query(
-    "UPDATE stores SET is_trending = true WHERE id = $1",
-    [store_id]
+  const planInfo = BOOST_PLANS[plan];
+
+  /* Provisional expiry (expires_at is NOT NULL). The REAL expiry is
+     recalculated from the approval timestamp when the admin approves. */
+  const provisionalExpiry = new Date();
+  provisionalExpiry.setDate(provisionalExpiry.getDate() + planInfo.duration);
+
+  const inserted = await query(
+    `INSERT INTO featured_stores
+       (store_id, vendor_id, plan, status, amount_paid, payment_ref,
+        payment_method, expires_at, position)
+     VALUES ($1, $2, $3, 'pending', $4, $5, 'eft', $6, $7)
+     RETURNING id`,
+    [store_id, vendor_id, plan, planInfo.price, String(payment_ref).trim(), provisionalExpiry, planInfo.position]
   );
 
   res.status(201).json({
     success:    true,
+    boost_id:   inserted.rows[0].id,
     store_name: storeCheck.rows[0].name,
     plan:       planInfo.name,
-    expires_at: expiresAt,
-    message:    `${storeCheck.rows[0].name} is now boosted for ${planInfo.duration} days!`,
+    status:     "pending",
+    message:    "Boost submitted! It activates once we verify your payment — usually within a few hours during business hours.",
   });
 };
 
@@ -159,10 +161,12 @@ const trackClick = async (req, res) => {
   res.status(200).json({ success: true });
 };
 
-/* ── CANCEL BOOST ── DELETE /api/featured/:id ───────────────── */
+/* ── CANCEL BOOST ── DELETE /api/featured/:id ─────────────────
+   Vendors may cancel their own pending or active boost. is_trending
+   only clears if the store has no OTHER active boost remaining.    */
 const cancelBoost = async (req, res) => {
   const check = await query(
-    "SELECT vendor_id, store_id FROM featured_stores WHERE id = $1",
+    "SELECT vendor_id, store_id, status FROM featured_stores WHERE id = $1",
     [req.params.id]
   );
   if (check.rows.length === 0) return res.status(404).json({ success: false, message: "Boost not found." });
@@ -172,12 +176,17 @@ const cancelBoost = async (req, res) => {
     "UPDATE featured_stores SET status = 'cancelled' WHERE id = $1",
     [req.params.id]
   );
-  await query(
-    "UPDATE stores SET is_trending = false WHERE id = $1",
+
+  const stillActive = await query(
+    `SELECT id FROM featured_stores
+     WHERE store_id = $1 AND status = 'active' AND expires_at > NOW()`,
     [check.rows[0].store_id]
   );
+  if (stillActive.rows.length === 0) {
+    await query("UPDATE stores SET is_trending = false WHERE id = $1", [check.rows[0].store_id]);
+  }
 
   res.status(200).json({ success: true });
 };
 
-module.exports = { getBoostPlans, getMyBoosts, getActiveFeatured, boostStore, trackClick, cancelBoost };
+module.exports = { getBoostPlans, getMyBoosts, getActiveFeatured, boostStore, trackClick, cancelBoost, BOOST_PLANS };
