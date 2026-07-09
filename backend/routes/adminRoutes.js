@@ -8,6 +8,7 @@ const {
   getStores, toggleStoreActive, toggleStoreTrending, adminDeleteStore,
   getAllOrders, adminUpdateOrderStatus,
   getBoosts, approveBoost, rejectBoost,
+  getSubscriptions, approveSubscription, rejectSubscription,
 } = require("../controllers/adminController");
 const guard = [protect, adminOnly];
 /* Dashboard */
@@ -28,4 +29,8 @@ router.put("/orders/:id/status",        ...guard, adminUpdateOrderStatus);
 router.get("/boosts",                   ...guard, getBoosts);
 router.put("/boosts/:id/approve",       ...guard, approveBoost);
 router.put("/boosts/:id/reject",        ...guard, rejectBoost);
+/* Subscription payment verification */
+router.get("/subscriptions",              ...guard, getSubscriptions);
+router.put("/subscriptions/:id/approve",  ...guard, approveSubscription);
+router.put("/subscriptions/:id/reject",   ...guard, rejectSubscription);
 module.exports = router;

@@ -88,6 +88,22 @@ const getMySubscription = async (req, res) => {
     });
   }
 
+  /* Pending upgrade awaiting admin verification? Tell the frontend */
+  const pendingResult = await query(
+    "SELECT id, plan, amount_paid, created_at FROM subscriptions WHERE user_id = $1 AND status = 'pending' ORDER BY created_at DESC LIMIT 1",
+    [userId]
+  );
+
+  /* Most recent rejection (only relevant if nothing is pending) */
+  const rejectedResult = pendingResult.rows.length === 0
+    ? await query(
+        `SELECT id, plan, rejected_reason, created_at FROM subscriptions
+         WHERE user_id = $1 AND status = 'rejected'
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId]
+      )
+    : { rows: [] };
+
   /* Get usage stats */
   const storeCount = await query(
     "SELECT COUNT(*) AS count FROM stores WHERE owner_id = $1 AND is_active = true",
@@ -106,6 +122,8 @@ const getMySubscription = async (req, res) => {
     plan_info:    PLANS[plan] || PLANS.free,
     plan_expires_at: user.plan_expires_at,
     plan_started_at: user.plan_started_at,
+    pending_upgrade:  pendingResult.rows[0] || null,
+    rejected_upgrade: rejectedResult.rows[0] || null,
     usage: {
       stores:   Number(storeCount.rows[0].count),
       products: Number(productCount.rows[0].count),
@@ -114,8 +132,10 @@ const getMySubscription = async (req, res) => {
 };
 
 /* ── UPGRADE PLAN ── POST /api/subscriptions/upgrade ─────────
-   For now: manual EFT payment — admin confirms upgrade.
-   When PayFast is live this will auto-upgrade.
+   SECURITY: creates a PENDING record only. The user's plan does
+   NOT change until an admin verifies the EFT arrived
+   (adminController.approveSubscription). The old code here
+   auto-approved "for demo purposes" — that was exploit P16.
 ─────────────────────────────────────────────────────────────── */
 const upgradePlan = async (req, res) => {
   const { plan, payment_method, payment_ref } = req.body;
@@ -125,39 +145,47 @@ const upgradePlan = async (req, res) => {
     return res.status(400).json({ success: false, message: "Invalid plan. Choose basic or pro." });
   }
 
+  /* Payment reference is REQUIRED — it's what we verify against the bank */
+  if (!payment_ref || String(payment_ref).trim().length < 4) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide your EFT payment reference so we can verify your payment.",
+    });
+  }
+
+  /* One pending upgrade per user at a time */
+  const pendingCheck = await query(
+    "SELECT id FROM subscriptions WHERE user_id = $1 AND status = 'pending'",
+    [userId]
+  );
+  if (pendingCheck.rows.length > 0) {
+    return res.status(409).json({
+      success: false,
+      message: "You already have an upgrade awaiting verification. We'll review it shortly.",
+    });
+  }
+
   const planInfo = PLANS[plan];
 
-  /* Create pending subscription record */
+  /* Provisional expiry — the REAL period starts when the admin approves */
   const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + 1); // 1 month
+  expiresAt.setMonth(expiresAt.getMonth() + 1);
 
-  await query(
+  const inserted = await query(
     `INSERT INTO subscriptions
        (user_id, plan, status, amount_paid, payment_method, payment_ref, expires_at)
-     VALUES ($1, $2, 'pending', $3, $4, $5, $6)`,
-    [userId, plan, planInfo.price, payment_method || "eft", payment_ref || null, expiresAt]
-  );
-
-  /* For EFT — mark as pending, admin confirms later */
-  /* For now auto-approve for demo purposes */
-  await query(
-    `UPDATE users
-     SET plan = $1, plan_started_at = NOW(), plan_expires_at = $2
-     WHERE id = $3`,
-    [plan, expiresAt, userId]
-  );
-
-  await query(
-    "UPDATE subscriptions SET status = 'active' WHERE user_id = $1 AND plan = $2 AND status = 'pending'",
-    [userId, plan]
+     VALUES ($1, $2, 'pending', $3, $4, $5, $6)
+     RETURNING id`,
+    [userId, plan, planInfo.price, payment_method || "eft", String(payment_ref).trim(), expiresAt]
   );
 
   res.status(200).json({
-    success:    true,
+    success:         true,
+    subscription_id: inserted.rows[0].id,
     plan,
-    plan_info:  planInfo,
-    expires_at: expiresAt,
-    message:    `Successfully upgraded to ${planInfo.name} plan!`,
+    plan_info:       planInfo,
+    status:          "pending",
+    message:         "Upgrade submitted! Your plan activates once we verify your payment — usually within a few hours.",
   });
 };
 

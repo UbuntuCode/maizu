@@ -127,11 +127,11 @@ function SubscriptionContent() {
       <div style={{ background: C.bg, minHeight: "100vh", paddingBottom: 90 }}>
         <Header />
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" }}>
-          <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#D1FAE5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, marginBottom: 20 }}>ðŸŽ‰</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: C.dark, marginBottom: 8 }}>Upgraded to {plan.name}!</div>
+         <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, marginBottom: 20 }}>⏳</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: C.dark, marginBottom: 8 }}>Upgrade submitted!</div>
           <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.7, marginBottom: 28, maxWidth: 280 }}>
-            Your account has been upgraded. You now have access to all {plan.name} features.
-          </div>
+            Your {plan.name} plan activates once we verify your payment — usually within a few hours during business hours. We&apos;ll notify you the moment it&apos;s live.
+          </div> 
           <button onClick={() => router.push("/dashboard")}
             style={{ background: C.primary, color: "#fff", border: "none", borderRadius: 22, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             Go to Dashboard â†’
@@ -239,11 +239,11 @@ function SubscriptionContent() {
           {/* Upgrade button */}
           <button onClick={handleUpgrade} disabled={upgrading}
             style={{ width: "100%", background: upgrading ? C.grayLight : plan.color, color: "#fff", border: "none", borderRadius: 14, padding: "14px 0", fontSize: 15, fontWeight: 700, cursor: upgrading ? "default" : "pointer" }}>
-            {upgrading ? "Activatingâ€¦" : `ðŸš€ Activate ${plan.name} Plan â€” R${plan.price}/month`}
+            {upgrading ? "Submitting…" : `🚀 Upgrade to ${plan.name} — R${plan.price}/month`}
           </button>
 
           <div style={{ textAlign: "center", fontSize: 11, color: C.gray, marginTop: 8 }}>
-            Your plan activates immediately after submitting. Cancel anytime.
+            Your plan activates once we verify your payment — usually within a few hours. Cancel anytime.
           </div>
         </div>
 

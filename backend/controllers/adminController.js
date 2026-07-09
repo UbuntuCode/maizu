@@ -1,8 +1,6 @@
+const { query } = require("../config/db");
 const { sendNotification } = require("./notificationController");
 const { BOOST_PLANS }      = require("./featuredController");
-
-
-const { query } = require("../config/db");
 
 /* ══════════════════════════════════════════════════════════════
    DASHBOARD STATS
@@ -376,10 +374,141 @@ const rejectBoost = async (req, res) => {
   res.status(200).json({ success: true, boost });
 };
 
+/* ══════════════════════════════════════════════════════════════
+   SUBSCRIPTION PAYMENT VERIFICATION — same pattern as boosts.
+   Upgrades are created as 'pending' by subscriptionController.
+   users.plan only changes when an admin approves.
+══════════════════════════════════════════════════════════════ */
+
+/* ── LIST ── GET /api/admin/subscriptions?status=pending ────── */
+const getSubscriptions = async (req, res) => {
+  const { status = "pending" } = req.query;
+  const valid = ["pending", "active", "rejected", "expired", "cancelled", "all"];
+  if (!valid.includes(status)) {
+    return res.status(400).json({ success: false, message: "Invalid status filter." });
+  }
+  const where  = status === "all" ? "" : "WHERE sub.status = $1";
+  const params = status === "all" ? [] : [status];
+
+  const result = await query(
+    `SELECT sub.*, u.full_name AS vendor_name, u.email AS vendor_email, u.plan AS current_plan
+     FROM subscriptions sub
+     JOIN users u ON sub.user_id = u.id
+     ${where}
+     ORDER BY sub.created_at DESC
+     LIMIT 100`,
+    params
+  );
+  res.status(200).json({ success: true, subscriptions: result.rows });
+};
+
+/* ── APPROVE ── PUT /api/admin/subscriptions/:id/approve ──────
+   ONLY after the money is confirmed in the bank account.        */
+const approveSubscription = async (req, res) => {
+  const subResult = await query(
+    "SELECT * FROM subscriptions WHERE id = $1 AND status = 'pending'",
+    [req.params.id]
+  );
+  if (subResult.rows.length === 0) {
+    return res.status(404).json({ success: false, message: "Pending subscription not found (already handled?)." });
+  }
+  const sub = subResult.rows[0];
+
+  /* Period runs one month from approval */
+  const expiresAt = new Date();
+  expiresAt.setMonth(expiresAt.getMonth() + 1);
+
+  const updated = await query(
+    `UPDATE subscriptions
+     SET status = 'active', approved_by = $1, approved_at = NOW(),
+         started_at = NOW(), expires_at = $2
+     WHERE id = $3 AND status = 'pending'
+     RETURNING *`,
+    [req.user.id, expiresAt, req.params.id]
+  );
+  if (updated.rows.length === 0) {
+    return res.status(409).json({ success: false, message: "Subscription was already handled by someone else." });
+  }
+
+  /* Supersede any previous active subscription rows for this user */
+  await query(
+    `UPDATE subscriptions SET status = 'expired'
+     WHERE user_id = $1 AND status = 'active' AND id <> $2`,
+    [sub.user_id, req.params.id]
+  );
+
+  /* NOW the plan actually changes */
+  await query(
+    `UPDATE users SET plan = $1, plan_started_at = NOW(), plan_expires_at = $2 WHERE id = $3`,
+    [sub.plan, expiresAt, sub.user_id]
+  );
+
+  await sendNotification(
+    sub.user_id,
+    "plan_approved",
+    "Plan upgraded! 💳",
+    `Payment verified — you're now on the ${sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1)} plan until ${expiresAt.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })}.`,
+    { subscription_id: sub.id }
+  );
+
+  /* Invoice email — lights up when utils/email.js (Task C1) exists */
+  try {
+    const email = require("../utils/email");
+    if (email && email.sendEmail && email.boostInvoiceEmail) {
+      const vendor = (await query("SELECT full_name, email FROM users WHERE id = $1", [sub.user_id])).rows[0];
+      if (vendor) {
+        const { subject, html } = email.boostInvoiceEmail({
+          vendorName:    vendor.full_name,
+          storeName:     "Maizu subscription",
+          planName:      `${sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1)} plan (1 month)`,
+          amount:        sub.amount_paid,
+          receiptNumber: "MZU-SUB-" + sub.id.slice(0, 8).toUpperCase(),
+          paymentMethod: sub.payment_method || "EFT",
+          date:          new Date().toLocaleDateString("en-ZA"),
+        });
+        await email.sendEmail({ to: vendor.email, subject, html });
+      }
+    }
+  } catch { /* email module not built yet — expected until Task C1 merges */ }
+
+  res.status(200).json({ success: true, subscription: updated.rows[0] });
+};
+
+/* ── REJECT ── PUT /api/admin/subscriptions/:id/reject ──────── */
+const rejectSubscription = async (req, res) => {
+  const { reason } = req.body;
+  if (!reason || String(reason).trim().length < 3) {
+    return res.status(400).json({ success: false, message: "A rejection reason is required — the vendor will see it." });
+  }
+
+  const updated = await query(
+    `UPDATE subscriptions
+     SET status = 'rejected', rejected_reason = $1, approved_by = $2, approved_at = NOW()
+     WHERE id = $3 AND status = 'pending'
+     RETURNING *`,
+    [String(reason).trim(), req.user.id, req.params.id]
+  );
+  if (updated.rows.length === 0) {
+    return res.status(404).json({ success: false, message: "Pending subscription not found (already handled?)." });
+  }
+  const sub = updated.rows[0];
+
+  await sendNotification(
+    sub.user_id,
+    "plan_rejected",
+    "Plan payment issue ⚠️",
+    `We couldn't verify your upgrade payment: ${String(reason).trim()}. Your current plan is unchanged — please check your reference and resubmit.`,
+    { subscription_id: sub.id }
+  );
+
+  res.status(200).json({ success: true, subscription: sub });
+};
+
 module.exports = {
   getDashboardStats,
   getUsers, updateUserRole, deleteUser,
   getStores, toggleStoreActive, toggleStoreTrending, adminDeleteStore,
   getAllOrders, adminUpdateOrderStatus,
   getBoosts, approveBoost, rejectBoost,
+  getSubscriptions, approveSubscription, rejectSubscription,
 };
