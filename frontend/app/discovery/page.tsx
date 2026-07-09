@@ -26,6 +26,9 @@ interface VideoItem {
 /* Global store survives React re-mounts within the same session */
 let globalVideos: VideoItem[] = [];
 const globalLikes:  Record<string, boolean> = {};
+/* P6: uploads are hidden for launch — videos currently persist in browser
+   memory only and vanish on refresh. Flip to true once real upload exists. */
+const DISCOVERY_UPLOAD_ENABLED = false;
 
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
 
@@ -235,9 +238,11 @@ export default function DiscoveryPage() {
             ))}
           </div>
 
-          <button onClick={() => isLoggedIn ? setShowAdd(true) : router.push("/login")} style={{ width:36, height:36, borderRadius:"50%", background:"rgba(0,0,0,0.45)", border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
+          {DISCOVERY_UPLOAD_ENABLED && (
+            <button onClick={() => isLoggedIn ? setShowAdd(true) : router.push("/login")} style={{ width:36, height:36, borderRadius:"50%", background:"rgba(0,0,0,0.45)", border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -269,15 +274,21 @@ export default function DiscoveryPage() {
               </div>
               <div style={{ fontSize:20, fontWeight:700, color:WHITE, marginBottom:10 }}>No videos yet</div>
               <div style={{ fontSize:14, color:"rgba(255,255,255,0.5)", maxWidth:260, lineHeight:1.6, marginBottom:24 }}>
-                Be the first to share your products. Upload a short video to showcase what you sell.
+                Product videos from Maizu stores will appear here. Check back soon!
               </div>
-              {isLoggedIn ? (
-                <button onClick={() => setShowAdd(true)} style={{ background:P, color:WHITE, border:"none", borderRadius:22, padding:"12px 28px", fontSize:14, fontWeight:700, cursor:"pointer" }}>
-                  Upload your first video
-                </button>
+              {DISCOVERY_UPLOAD_ENABLED ? (
+                isLoggedIn ? (
+                  <button onClick={() => setShowAdd(true)} style={{ background:P, color:WHITE, border:"none", borderRadius:22, padding:"12px 28px", fontSize:14, fontWeight:700, cursor:"pointer" }}>
+                    Upload your first video
+                  </button>
+                ) : (
+                  <button onClick={() => router.push("/login")} style={{ background:P, color:WHITE, border:"none", borderRadius:22, padding:"12px 28px", fontSize:14, fontWeight:700, cursor:"pointer" }}>
+                    Sign in to post
+                  </button>
+                )
               ) : (
-                <button onClick={() => router.push("/login")} style={{ background:P, color:WHITE, border:"none", borderRadius:22, padding:"12px 28px", fontSize:14, fontWeight:700, cursor:"pointer" }}>
-                  Sign in to post
+                <button onClick={() => router.push("/stores")} style={{ background:P, color:WHITE, border:"none", borderRadius:22, padding:"12px 28px", fontSize:14, fontWeight:700, cursor:"pointer" }}>
+                  Explore stores
                 </button>
               )}
             </div>
