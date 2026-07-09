@@ -212,8 +212,7 @@ export default function ProfilePage() {
         {/* Stats row */}
         <div style={{ display: "flex", gap: 8 }}>
           <StatCard label="Stores"    value={stores.length}  onClick={() => router.push("/dashboard")} />
-          <StatCard label="Following" value={0} />
-          <StatCard label="Followers" value={0} />
+       {/* TODO: restore Following/Followers when the follows feature exists */}
           <StatCard label="Orders"    value={orders.length}  onClick={() => router.push("/orders")} />
         </div>
       </div>

@@ -135,6 +135,20 @@ const deleteUser = async (req, res) => {
   if (id === req.user.id) {
     return res.status(400).json({ success: false, message: "Cannot delete your own account." });
   }
+
+  /* P8 fix: remove the AUTH account first — and abort if that fails,
+     so we never create a zombie who can still log in. */
+  try {
+    const adminModule = require("../config/supabaseAdmin");
+    const sbAdmin = adminModule.supabaseAdmin || adminModule.default || adminModule;
+    const { error } = await sbAdmin.auth.admin.deleteUser(id);
+    if (error && !String(error.message || "").toLowerCase().includes("not found")) {
+      return res.status(500).json({ success: false, message: `Could not remove login account: ${error.message}` });
+    }
+  } catch (e) {
+    return res.status(500).json({ success: false, message: `Could not remove login account: ${e.message}` });
+  }
+
   await query("DELETE FROM users WHERE id = $1", [id]);
   res.status(200).json({ success: true, message: "User deleted." });
 };
