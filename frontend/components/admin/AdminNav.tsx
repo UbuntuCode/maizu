@@ -6,11 +6,12 @@ import { C } from "@/utils/constants";
 export default function AdminNav({ active }: { active: string }) {
   const router = useRouter();
   const tabs = [
-    { path: "/admin",        icon: "📊", label: "Overview" },
-    { path: "/admin/users",  icon: "👥", label: "Users"    },
-    { path: "/admin/stores", icon: "🏪", label: "Stores"   },
-    { path: "/admin/orders", icon: "📦", label: "Orders"   },
-    { path: "/admin/boosts", icon: "🚀", label: "Boosts"   },
+    { path: "/admin",               icon: "📊", label: "Overview" },
+    { path: "/admin/users",         icon: "👥", label: "Users"    },
+    { path: "/admin/stores",        icon: "🏪", label: "Stores"   },
+    { path: "/admin/orders",        icon: "📦", label: "Orders"   },
+    { path: "/admin/boosts",        icon: "🚀", label: "Boosts"   },
+    { path: "/admin/subscriptions", icon: "💳", label: "Plans"    },
   ];
   return (
     <div style={{ background: C.dark, display: "flex", overflowX: "auto" }}>
