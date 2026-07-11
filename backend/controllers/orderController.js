@@ -1,106 +1,223 @@
-const { query }            = require("../config/db");
+const { query } = require("../config/db");
 const { sendNotification } = require("./notificationController");
 
-/* ── PLACE ORDER ── POST /api/orders ────────────────────────── */
-const placeOrder = async (req, res) => {
-  const { items, delivery_address, notes, promo_id, discount_amount, payment_method } = req.body;
-  const buyer_id = req.user.id;
+/* ══════════════════════════════════════════════════════════════
+   PLACE ORDER ── POST /api/orders
+   SECURITY (P17 fix):
+   - ALL prices come from the products table. Client-sent amounts,
+     including any `discount_amount` in the body, are IGNORED.
+   - Stock is validated AND decremented atomically per item; on any
+     shortfall, prior decrements are compensated and the buyer gets
+     a clean 409 naming the sold-out product.
+   - Promos are validated AND consumed server-side in one atomic
+     UPDATE (active + not expired + under max_uses + min order met).
+   - Service fee: 5% on (subtotal - discount) — must match checkout.
+══════════════════════════════════════════════════════════════ */
+const SERVICE_FEE_MULTIPLIER = 1.05;
 
-  if (!items || items.length === 0) {
-    return res.status(400).json({ success: false, message: "No items provided." });
+const placeOrder = async (req, res) => {
+  const { items, delivery_address, notes, promo_id } = req.body;
+  const buyerId = req.user.id;
+
+  /* ── Input validation ── */
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ success: false, message: "Your cart is empty." });
+  }
+  if (items.length > 50) {
+    return res.status(400).json({ success: false, message: "Too many items in one order." });
+  }
+  if (!delivery_address || String(delivery_address).trim().length < 5) {
+    return res.status(400).json({ success: false, message: "A delivery address is required." });
+  }
+  for (const it of items) {
+    const qty = Number(it.quantity);
+    if (!it.product_id || !Number.isInteger(qty) || qty < 1 || qty > 99) {
+      return res.status(400).json({ success: false, message: "Invalid item quantity." });
+    }
   }
 
-  try {
-    /* Calculate total */
-    var total_amount = 0;
-    var orderItems   = [];
+  /* Track side effects so we can compensate on failure */
+  const decremented = [];   // [{ product_id, quantity }]
+  let promoConsumed = null; // promo id if we incremented uses_count
 
-    for (var i = 0; i < items.length; i++) {
-      var item = items[i];
-      var prod = await query(
-        "SELECT id, name, price, stock_quantity, store_id FROM products WHERE id = $1 AND is_active = true",
-        [item.product_id]
+  const compensate = async () => {
+    for (const d of decremented) {
+      try {
+        await query(
+          "UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2",
+          [d.quantity, d.product_id]
+        );
+      } catch (e) { console.error("Stock compensation failed:", d.product_id, e.message); }
+    }
+    if (promoConsumed) {
+      try {
+        await query(
+          "UPDATE promo_codes SET uses_count = GREATEST(uses_count - 1, 0) WHERE id = $1",
+          [promoConsumed]
+        );
+      } catch (e) { console.error("Promo compensation failed:", promoConsumed, e.message); }
+    }
+  };
+
+  try {
+    /* ── 1. Load products; compute prices SERVER-SIDE ── */
+    const orderItems = [];
+    const storeIds   = new Set();
+    let subtotal     = 0;
+
+    for (const it of items) {
+      const qty = Number(it.quantity);
+      const productResult = await query(
+        "SELECT id, name, price, stock_quantity, store_id, is_active FROM products WHERE id = $1",
+        [it.product_id]
       );
-      if (prod.rows.length === 0) {
-        return res.status(404).json({ success: false, message: "Product not found: " + item.product_id });
+      if (productResult.rows.length === 0 || !productResult.rows[0].is_active) {
+        return res.status(400).json({ success: false, message: "One of the products is no longer available." });
       }
-      var p       = prod.rows[0];
-      var qty     = Number(item.quantity);
-      var subtotal = Number(p.price) * qty;
-      total_amount += subtotal;
-      orderItems.push({ id: p.id, name: p.name, price: p.price, store_id: p.store_id, quantity: qty, subtotal });
+      const p = productResult.rows[0];
+
+      const unitPrice    = Number(p.price);
+      const lineSubtotal = Math.round(unitPrice * qty * 100) / 100;
+
+      orderItems.push({
+        product_id:   p.id,
+        product_name: p.name,
+        store_id:     p.store_id,
+        quantity:     qty,
+        unit_price:   unitPrice,
+        subtotal:     lineSubtotal,
+      });
+      if (p.store_id) storeIds.add(p.store_id);
+      subtotal += lineSubtotal;
+    }
+    subtotal = Math.round(subtotal * 100) / 100;
+
+    /* ── 2. Atomically decrement stock per item ── */
+    for (const oi of orderItems) {
+      const dec = await query(
+        `UPDATE products
+         SET stock_quantity = stock_quantity - $1
+         WHERE id = $2 AND stock_quantity >= $1
+         RETURNING id`,
+        [oi.quantity, oi.product_id]
+      );
+      if (dec.rows.length === 0) {
+        await compensate();
+        return res.status(409).json({
+          success: false,
+          message: `"${oi.product_name}" just sold out (or has less stock than you ordered). Please update your cart.`,
+        });
+      }
+      decremented.push({ product_id: oi.product_id, quantity: oi.quantity });
     }
 
-    /* Apply discount */
-    var finalDiscount = Number(discount_amount) || 0;
-    var finalTotal    = Math.max(0, total_amount - finalDiscount) * 1.05; // + 5% service fee
+    /* ── 3. Promo: validate AND consume in ONE atomic statement ── */
+    let discount = 0;
+    if (promo_id) {
+      const promoResult = await query(
+        `UPDATE promo_codes
+         SET uses_count = uses_count + 1
+         WHERE id = $1
+           AND is_active = true
+           AND (expires_at IS NULL OR expires_at > NOW())
+           AND (max_uses IS NULL OR uses_count < max_uses)
+           AND (min_order_amount IS NULL OR min_order_amount <= $2)
+         RETURNING *`,
+        [promo_id, subtotal]
+      );
+      if (promoResult.rows.length === 0) {
+        await compensate();
+        return res.status(400).json({
+          success: false,
+          message: "That promo code is no longer valid for this order (expired, fully used, or minimum not met).",
+        });
+      }
+      const promo = promoResult.rows[0];
+      promoConsumed = promo.id;
 
-    /* Create order */
-    var orderResult = await query(
+      /* Store-scoped promos only discount items from that store */
+      const eligibleBase = promo.store_id
+        ? orderItems.filter(oi => oi.store_id === promo.store_id)
+                    .reduce((s, oi) => s + oi.subtotal, 0)
+        : subtotal;
+
+      if (promo.discount_type === "percentage") {
+        discount = eligibleBase * (Number(promo.discount_value) / 100);
+      } else {
+        discount = Number(promo.discount_value);
+      }
+      discount = Math.min(Math.round(discount * 100) / 100, eligibleBase);
+    }
+
+    /* ── 4. Final total — server math only. 5% service fee. ── */
+    const finalTotal = Math.round((subtotal - discount) * SERVICE_FEE_MULTIPLIER * 100) / 100;
+
+    /* ── 5. Create the order ── */
+    const orderResult = await query(
       `INSERT INTO orders (buyer_id, total_amount, delivery_address, notes, status)
-       VALUES ($1, $2, $3, $4, 'pending') RETURNING *`,
-      [buyer_id, finalTotal, delivery_address, notes || ""]
+       VALUES ($1, $2, $3, $4, 'pending')
+       RETURNING *`,
+      [buyerId, finalTotal, String(delivery_address).trim(), notes || null]
     );
-    var order = orderResult.rows[0];
+    const order = orderResult.rows[0];
 
-    /* Create order items */
-    var storeIds = new Set();
-    for (var j = 0; j < orderItems.length; j++) {
-      var oi = orderItems[j];
+    /* ── 6. Create order items ── */
+    for (const oi of orderItems) {
       await query(
         `INSERT INTO order_items (order_id, product_id, product_name, store_id, quantity, unit_price, subtotal)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [order.id, oi.id, oi.name, oi.store_id, oi.quantity, oi.price, oi.subtotal]
+        [order.id, oi.product_id, oi.product_name, oi.store_id, oi.quantity, oi.unit_price, oi.subtotal]
       );
-      storeIds.add(oi.store_id);
     }
 
-    /* Record promo use */
-    if (promo_id) {
-      try {
-        await query(
-          `INSERT INTO promo_code_uses (promo_id, order_id, buyer_id, discount_amount)
-           VALUES ($1, $2, $3, $4)`,
-          [promo_id, order.id, buyer_id, finalDiscount]
-        );
-        await query(
-          "UPDATE promo_codes SET uses_count = uses_count + 1 WHERE id = $1",
-          [promo_id]
-        );
-      } catch (e) { /* silent — promo tracking not critical */ }
-    }
-
-    /* ── Notify buyer ── */
+    /* ── 7. Notify buyer ── */
     await sendNotification(
-      buyer_id,
+      buyerId,
       "order_placed",
       "Order placed! 🎉",
       "Your order #" + order.id.slice(0, 8).toUpperCase() + " has been received. The vendor will confirm shortly.",
       { order_id: order.id }
     );
 
-    /* ── Notify vendors ── */
-    for (var storeId of storeIds) {
-      var storeResult = await query(
+    /* ── 8. Notify vendors ── */
+    for (const storeId of storeIds) {
+      const storeResult = await query(
         "SELECT owner_id, name FROM stores WHERE id = $1",
         [storeId]
       );
       if (storeResult.rows.length > 0) {
-        var store = storeResult.rows[0];
+        const store = storeResult.rows[0];
+        const storeTotal = orderItems
+          .filter(oi => oi.store_id === storeId)
+          .reduce((s, oi) => s + oi.subtotal, 0);
         await sendNotification(
           store.owner_id,
           "new_order",
           "New order received! 📦",
-          "You have a new order #" + order.id.slice(0, 8).toUpperCase() + " at " + store.name + ". R" + finalTotal.toFixed(2),
+          "You have a new order #" + order.id.slice(0, 8).toUpperCase() + " at " + store.name + ". R" + storeTotal.toFixed(2),
           { order_id: order.id, store_id: storeId }
         );
       }
     }
 
+    /* ── 9. Email confirmation (fire-and-forget — never delays the response) ── */
+    try {
+      const { sendEmail, orderConfirmationEmail } = require("../utils/email");
+      const { subject, html } = orderConfirmationEmail({
+        buyerName: req.user.full_name,
+        orderId:   order.id,
+        items:     orderItems.map(oi => ({ name: oi.product_name, quantity: oi.quantity, subtotal: oi.subtotal })),
+        total:     finalTotal,
+        deliveryAddress: String(delivery_address).trim(),
+      });
+      sendEmail({ to: req.user.email, subject, html });
+    } catch (e) { console.error("Order email error:", e.message); }
+
     res.status(201).json({ success: true, order });
 
   } catch (err) {
     console.error("Place order error:", err.message);
+    await compensate();
     res.status(500).json({ success: false, message: "Failed to place order." });
   }
 };
@@ -148,10 +265,10 @@ const updateOrderStatus = async (req, res) => {
     return res.status(404).json({ success: false, message: "Order not found." });
   }
 
-  var order = result.rows[0];
+  const order = result.rows[0];
 
   /* ── Notify buyer of status change ── */
-  var messages = {
+  const messages = {
     confirmed: { title: "Order confirmed! ✅", body: "Your order #" + id.slice(0, 8).toUpperCase() + " has been confirmed and is being prepared." },
     shipped:   { title: "Order on the way! 🚚", body: "Your order #" + id.slice(0, 8).toUpperCase() + " has been shipped and is on its way to you." },
     delivered: { title: "Order delivered! 🎉", body: "Your order #" + id.slice(0, 8).toUpperCase() + " has been delivered. Enjoy your purchase!" },
