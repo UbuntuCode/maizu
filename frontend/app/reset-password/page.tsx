@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
         <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.6, marginBottom: 24 }}>
           This password reset link is no longer valid. Reset links expire after a while — please request a fresh one.
         </div>
-        <button onClick={() => router.push("/forgot-password")}
+        <button onClick={() => router.push("/login")}
           style={{ width: "100%", background: C.primary, color: "#fff", border: "none", borderRadius: 12, padding: "13px 0", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
           Request a new link
         </button>
