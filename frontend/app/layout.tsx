@@ -1,69 +1,128 @@
-/* Global footer — rendered on every page via app/layout.tsx.
-   Uses next/link for client-side navigation. All targets are
-   real routes. Refund & Cancellation link to /terms, where those
-   policies live (Sections 6 & 7). */
-import React from "react";
-import Link from "next/link";
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import { AuthProvider }     from "@/context/AuthContext";
+import { CartProvider }     from "@/context/CartContext";
+import { WishlistProvider } from "@/context/WishlistContext";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
-const DARK   = "#0F0F0F";
-const MUTED  = "#71717A";
-const BORDER = "#E4E4E7";
-const P      = "#E8401C";
+export const metadata: Metadata = {
+  title:       "Maizu Business Hub",
+  description: "South Africa's premier digital marketplace.",
+  manifest:    "/manifest.json",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Maizu" },
+};
 
-const col: React.CSSProperties  = { display: "flex", flexDirection: "column", gap: 10, minWidth: 150 };
-const head: React.CSSProperties = { fontSize: 13, fontWeight: 800, color: DARK, marginBottom: 4 };
-const link: React.CSSProperties = { fontSize: 13, color: MUTED, textDecoration: "none" };
+export const viewport: Viewport = {
+  themeColor:   "#E8401C",
+  width:        "device-width",
+  initialScale: 1,
+  viewportFit:  "cover",
+};
 
-export default function Footer() {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <footer style={{ background: "#FFFFFF", borderTop: `0.5px solid ${BORDER}`, marginTop: 40, paddingBottom: 96 /* clears mobile bottom nav */ }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 20px 0" }}>
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="preconnect" href="https://res.cloudinary.com" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+        <meta name="apple-mobile-web-app-capable"          content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title"            content="Maizu" />
+        <meta name="mobile-web-app-capable"                content="yes" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <style>{`
+          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          html { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+          body { background: #F7F7F5; overflow-x: hidden; max-width: 100vw; }
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "32px 48px", justifyContent: "space-between" }}>
+          /* Prevent anything from escaping viewport width */
+          #__next, [data-nextjs-scroll-focus-boundary] { overflow-x: hidden; }
 
-          {/* Brand */}
-          <div style={{ maxWidth: 280 }}>
-            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 4 }}>
-              <span style={{ color: P }}>MAI</span><span style={{ color: DARK }}>ZU</span>
-            </div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: 1, marginBottom: 12 }}>BUSINESS HUB</div>
-            <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.7 }}>
-              South Africa&apos;s premier business hub empowering entrepreneurs across the nation.
-            </div>
-          </div>
+          ::-webkit-scrollbar { width: 0; height: 0; }
 
-          {/* Platform */}
-          <div style={col}>
-            <div style={head}>Platform</div>
-            <Link href="/mall"      style={link}>Explore Mall</Link>
-            <Link href="/stores"    style={link}>Browse Stores</Link>
-            <Link href="/search"    style={link}>Search Products</Link>
-            <Link href="/live-feed" style={link}>Live Feed</Link>
-            <Link href="/sell"      style={link}>Start Selling</Link>
-          </div>
+          /* ── MOBILE — full width, no sidebar ── */
+          .maizu-shell      { width: 100%; min-height: 100vh; }
+          .maizu-header     { position: sticky; top: 0; z-index: 200; }
+          .desktop-sidebar  { display: none !important; }
+          .page-content     { width: 100%; padding-bottom: 72px; }
+          .bottom-nav-wrapper { display: block; }
 
-          {/* Legal */}
-          <div style={col}>
-            <div style={head}>Legal</div>
-            <Link href="/terms"   style={link}>Terms &amp; Conditions</Link>
-            <Link href="/privacy" style={link}>Privacy Policy</Link>
-            <Link href="/terms"   style={link}>Refund Policy</Link>
-            <Link href="/terms"   style={link}>Cancellation Policy</Link>
-          </div>
+          /* Responsive grids */
+          .product-grid  { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+          .store-grid    { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+          .category-grid { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 4px; }
+          .category-grid::-webkit-scrollbar { display: none; }
+          .h-scroll      { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+          .h-scroll::-webkit-scrollbar { display: none; }
 
-          {/* Connect */}
-          <div style={col}>
-            <div style={head}>Connect</div>
-            <Link href="/contact" style={link}>Contact Us</Link>
-            <Link href="/support" style={link}>Support</Link>
-            <Link href="/help"    style={link}>Help &amp; FAQ</Link>
-          </div>
-        </div>
+          /* ── TABLET (640px+) ── */
+          @media (min-width: 640px) {
+            .product-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+            .store-grid   { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+          }
 
-        <div style={{ borderTop: `0.5px solid ${BORDER}`, marginTop: 28, padding: "18px 0", textAlign: "center", fontSize: 12, color: MUTED }}>
-          © {new Date().getFullYear()} Maizu Business Hub (Pty) Ltd. Empowering South African entrepreneurs, one store at a time. 🇿🇦
-        </div>
-      </div>
-    </footer>
+          /* ── DESKTOP (1024px+) ── */
+          @media (min-width: 1024px) {
+            body { background: #EFEFED; }
+
+            .maizu-shell {
+              display: grid;
+              grid-template-columns: 220px 1fr;
+              grid-template-rows: 56px 1fr;
+              grid-template-areas: "header header" "sidebar content";
+              min-height: 100vh;
+              overflow-x: hidden;
+            }
+            .maizu-header  { grid-area: header; }
+            .desktop-sidebar {
+              grid-area: sidebar;
+              display: flex !important;
+              flex-direction: column;
+              background: #fff;
+              border-right: 0.5px solid #E4E4E7;
+              padding: 16px 0;
+              position: sticky;
+              top: 56px;
+              height: calc(100vh - 56px);
+              overflow-y: auto;
+            }
+            .page-content {
+              grid-area: content;
+              max-width: 1100px;
+              padding: 24px 32px 40px;
+              padding-bottom: 40px; /* no bottom nav on desktop */
+            }
+            .bottom-nav-wrapper { display: none !important; }
+
+            .product-grid  { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+            .store-grid    { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+            .category-grid { display: grid; grid-template-columns: repeat(8,1fr); gap: 10px; overflow: visible; }
+          }
+
+          @media (min-width: 1440px) {
+            .maizu-shell   { grid-template-columns: 240px 1fr; }
+            .page-content  { max-width: 1280px; }
+            .product-grid  { grid-template-columns: repeat(5, 1fr); }
+          }
+
+          /* Animations */
+          @keyframes fadeUp  { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+          @keyframes spin    { to { transform: rotate(360deg); } }
+          @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        `}</style>
+      </head>
+      <body>
+        <AuthProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <ServiceWorkerRegistration />
+              {children}
+            </WishlistProvider>
+          </CartProvider>
+        </AuthProvider>
+      </body>
+    </html>
   );
 }
