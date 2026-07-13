@@ -1,9 +1,11 @@
+import Footer from "@/components/layout/Footer";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider }     from "@/context/AuthContext";
 import { CartProvider }     from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+
 
 export const metadata: Metadata = {
   title:       "Maizu Business Hub",
@@ -119,6 +121,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <WishlistProvider>
               <ServiceWorkerRegistration />
               {children}
+              <Footer />
             </WishlistProvider>
           </CartProvider>
         </AuthProvider>
