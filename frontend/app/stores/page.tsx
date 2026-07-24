@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { C } from "@/utils/constants";
 import { SearchIc, StarIc, PeopleIc, TrendIc, ImgIc } from "@/components/ui/icons";
 import Header from "@/components/layout/Header";
-import Footer from "@/components/ui/Footer";
 import BottomNav from "@/components/navigation/BottomNav";
 import { storesApi, type Store } from "@/utils/api";
 
@@ -143,7 +142,7 @@ export default function StoresPage() {
         </div>
       </div>
 
-      <Footer />
+      
       <BottomNav />
     </div>
   );
